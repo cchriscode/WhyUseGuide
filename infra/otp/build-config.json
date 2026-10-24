@@ -1,0 +1,7 @@
+{
+  "osm": [
+    { "source": "sample/nippori-sample.osm.pbf", "timeZone": "Asia/Tokyo" }
+  ],
+  "transitServiceStart": "-P1Y",
+  "transitServiceEnd": "P2Y"
+}

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- P0 헬스체크용 최소 보행 네트워크 (닛포리역 주변, 손으로 만든 예시 데이터).
+     실제 그래프는 P1에서 간토 OSM 추출본 + 도쿄 GTFS로 빌드한다. -->
+<osm version="0.6" generator="whyuseguide-p0-sample">
+  <node id="1" lat="35.72810" lon="139.77100" version="1"/>
+  <node id="2" lat="35.72760" lon="139.76950" version="1"/>
+  <node id="3" lat="35.72700" lon="139.76800" version="1"/>
+  <node id="4" lat="35.72640" lon="139.76650" version="1"/>
+  <node id="5" lat="35.72900" lon="139.77050" version="1"/>
+  <way id="100" version="1">
+    <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/>
+    <tag k="highway" v="footway"/>
+    <tag k="name" v="谷中ぎんざ方面"/>
+  </way>
+  <way id="101" version="1">
+    <nd ref="5"/><nd ref="1"/>
+    <tag k="highway" v="residential"/>
+  </way>
+</osm>

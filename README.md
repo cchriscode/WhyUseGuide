@@ -19,4 +19,18 @@
 | `infra` | 배포 |
 | `docs` | PRD |
 
-개발 단계(P0–P6)는 PRD §11을 따릅니다.
+개발 단계(P0–P6)는 PRD §11을 따릅니다. 결정 기록은 [docs/decisions.md](docs/decisions.md).
+
+## 개발 환경
+
+Node 22 + pnpm 10, Python 3.12 + uv, Docker.
+
+```
+pnpm install && uv sync
+
+pnpm lint && pnpm typecheck && pnpm test          # JS
+uv run ruff check . && uv run mypy && uv run pytest # Python
+
+docker compose -f infra/docker-compose.yml up -d --build --wait
+infra/scripts/healthcheck.sh
+```

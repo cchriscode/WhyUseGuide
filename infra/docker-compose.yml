@@ -1,0 +1,70 @@
+# 로컬 개발 스택 (PRD §1 인프라, §11 P0).
+#   docker compose -f infra/docker-compose.yml up -d --wait
+#   infra/scripts/healthcheck.sh
+name: whyuseguide
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: whyuse
+      POSTGRES_PASSWORD: whyuse
+      POSTGRES_DB: whyuse
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U whyuse -d whyuse"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  otp:
+    image: opentripplanner/opentripplanner:2.6.0
+    # P0은 sample/ 의 작은 보행 그래프를 기동 시 빌드한다. P1에서 그래프 빌드 잡을 분리하고 --load로 바꾼다.
+    command: ["--build", "--serve"]
+    environment:
+      JAVA_OPTS: "-Xmx${OTP_HEAP:-1g}"
+    ports:
+      - "${OTP_PORT:-8080}:8080"
+    volumes:
+      - ./otp:/var/opentripplanner
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/otp/actuators/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 20s
+
+  api:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    environment:
+      WHYUSE_DATABASE_URL: postgresql+psycopg://whyuse:whyuse@db:5432/whyuse
+      WHYUSE_REDIS_URL: redis://redis:6379/0
+      WHYUSE_OTP_URL: http://otp:8080
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      otp:
+        condition: service_healthy
+
+volumes:
+  db-data:
