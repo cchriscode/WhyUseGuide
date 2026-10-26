@@ -33,7 +33,7 @@ services:
     image: opentripplanner/opentripplanner:2.10.0
     profiles: ["build"]
     environment:
-      JAVA_OPTS: -Xmx6g
+      JAVA_OPTS: -Xmx8g
     volumes:
       - ./otp:/var/opentripplanner
     command: ["--build", "--save"]

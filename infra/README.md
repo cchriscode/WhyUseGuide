@@ -6,7 +6,7 @@
 
 ```bash
 cp .env.example .env              # 저장소 루트. 포트가 겹치면 *_PORT 값을 바꾼다
-bash infra/otp/fetch-osm.sh       # 도쿄 OSM 추출본(약 90MB, © OpenStreetMap contributors, ODbL)
+bash infra/otp/fetch-osm.sh       # 간토 OSM(Geofabrik, 약 520MB)을 받아 도쿄 23구 + 하네다·나리타 범위로 자름 (© OpenStreetMap contributors, ODbL)
 docker compose -f infra/docker-compose.yml --env-file .env --profile build run --rm otp-build   # 그래프 빌드, 약 7분
 ```
 
