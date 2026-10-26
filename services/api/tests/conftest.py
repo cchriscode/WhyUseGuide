@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, delete, func, select
+from sqlalchemy import Engine, create_engine, delete, func, insert, select
 
 from whyuseguide_api.config import Settings
 from whyuseguide_api.db.models import City, Place, PlaceHours, PlaceStatus, User
@@ -167,7 +167,7 @@ def db() -> Iterator[Engine]:
         city_id = conn.execute(select(City.id).where(City.code == "tokyo")).scalar_one()
         for p in TEST_PLACES:
             pid = conn.execute(
-                Place.__table__.insert()
+                insert(Place)
                 .values(
                     city_id=city_id,
                     name_ko=p["name_ko"],
@@ -187,7 +187,7 @@ def db() -> Iterator[Engine]:
             if p["hours"]:
                 for wd in range(7):
                     conn.execute(
-                        PlaceHours.__table__.insert().values(
+                        insert(PlaceHours).values(
                             place_id=pid,
                             weekday=wd,
                             open_time=_t(p["hours"][0]),
