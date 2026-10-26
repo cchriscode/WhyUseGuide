@@ -179,3 +179,11 @@ def test_korean_names(conn: Connection) -> None:
     assert names()["102"] == ("구라마에", NameSource.machine)
     q = select(Stop.name_ko_aliases).where(Stop.source_id == "test-ko", Stop.gtfs_stop_id == "102")
     assert list(conn.execute(q).scalar_one()) == ["쿠라마에"]
+
+
+@needs_db
+def test_estimated_flag(conn: Connection) -> None:
+    load_network(conn, "test-approx", "tokyo", network(("101", "浅草")), estimated=True)
+    assert conn.execute(select(Line.estimated).where(Line.source_id == "test-approx")).scalar_one() is True
+    load_network(conn, "test-approx", "tokyo", network(("101", "浅草")))
+    assert conn.execute(select(Line.estimated).where(Line.source_id == "test-approx")).scalar_one() is False

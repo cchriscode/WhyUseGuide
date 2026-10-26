@@ -17,7 +17,9 @@ class LoadResult:
     removed_stops: int
 
 
-def load_network(conn: Connection, source_id: str, city_code: str, network: Network) -> LoadResult:
+def load_network(
+    conn: Connection, source_id: str, city_code: str, network: Network, estimated: bool = False
+) -> LoadResult:
     """출처 하나의 역·노선을 DB와 맞춘다: 있으면 갱신, 없으면 추가, 피드에서 빠진 것은 삭제.
 
     트랜잭션은 호출하는 쪽이 관리한다.
@@ -33,6 +35,7 @@ def load_network(conn: Connection, source_id: str, city_code: str, network: Netw
             "name_en": ln.name_en,
             "color_hex": ln.color_hex,
             "operator": ln.operator,
+            "estimated": estimated,
         }
         for ln in network.lines
     ]
@@ -40,7 +43,9 @@ def load_network(conn: Connection, source_id: str, city_code: str, network: Netw
     conn.execute(
         stmt.on_conflict_do_update(
             index_elements=[Line.source_id, Line.gtfs_route_id],
-            set_={k: stmt.excluded[k] for k in ("name_local", "name_en", "color_hex", "operator")}
+            set_={
+                k: stmt.excluded[k] for k in ("name_local", "name_en", "color_hex", "operator", "estimated")
+            }
             | {"updated_at": func.now()},
         )
     )

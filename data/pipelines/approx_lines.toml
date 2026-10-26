@@ -1,0 +1,43 @@
+# 근사 노선 정의 (docs/data-licenses.md 1장 "근사 안내").
+# 시간표 데이터를 상업적으로 쓸 수 없는 노선을 요약 사실(역 순서, 전 구간 소요 시간, 시간대별 배차 간격)로
+# 근사한다. 역 위치는 국토수치정보 N02(CC BY 4.0)에서 운영사 + 역 이름으로 찾는다.
+# 이 노선의 모든 구간은 앱에서 "예상"으로 표시한다(lines.estimated = true).
+#
+# headways: [시작 "HH:MM", 끝 "HH:MM", 간격(분)]. 끝이 24:00을 넘으면 "24:30"처럼 적는다.
+# facts: 각 값의 근거. "추정"은 출처 없이 정한 값이라 실측·평가로 보정해야 한다.
+
+[[line]]
+id = "jr-yamanote"
+operator = "東日本旅客鉄道"
+operator_en = "JR East"
+name_local = "山手線"
+name_en = "Yamanote Line"
+color = "#9ACD32"
+loop = true
+total_minutes = 60
+# 외선순환(시계 방향) 순서. 내선순환은 역순.
+stations = [
+  ["大崎", "Osaki"], ["五反田", "Gotanda"], ["目黒", "Meguro"], ["恵比寿", "Ebisu"],
+  ["渋谷", "Shibuya"], ["原宿", "Harajuku"], ["代々木", "Yoyogi"], ["新宿", "Shinjuku"],
+  ["新大久保", "Shin-okubo"], ["高田馬場", "Takadanobaba"], ["目白", "Mejiro"], ["池袋", "Ikebukuro"],
+  ["大塚", "Otsuka"], ["巣鴨", "Sugamo"], ["駒込", "Komagome"], ["田端", "Tabata"],
+  ["西日暮里", "Nishi-nippori"], ["日暮里", "Nippori"], ["鶯谷", "Uguisudani"], ["上野", "Ueno"],
+  ["御徒町", "Okachimachi"], ["秋葉原", "Akihabara"], ["神田", "Kanda"], ["東京", "Tokyo"],
+  ["有楽町", "Yurakucho"], ["新橋", "Shimbashi"], ["浜松町", "Hamamatsucho"], ["田町", "Tamachi"],
+  ["高輪ゲートウェイ", "Takanawa Gateway"], ["品川", "Shinagawa"],
+]
+headways = [
+  ["04:30", "07:00", 6],
+  ["07:00", "09:30", 3],
+  ["09:30", "16:30", 5],
+  ["16:30", "20:00", 4],
+  ["20:00", "23:00", 5],
+  ["23:00", "24:30", 8],
+]
+facts = [
+  "30개 역, 약 34.5km, 한 바퀴 약 1시간: https://rurubu.jp/andmore/article/25261 (2026-10-26 확인)",
+  "평일 낮 5분 간격(2022-03-12 시간표 개정): https://tabiris.com/?p=37476 (2026-10-26 확인)",
+  "출퇴근 시간 2~3분 간격 → 3분으로 둠: 위와 같음",
+  "첫차 오사키 외선순환 04:27, 막차 0시대(2021 앞당김): https://www.watch.impress.co.jp/docs/news/1284319.html (2026-10-26 확인)",
+  "추정: 04:30~07:00 6분, 16:30~20:00 4분, 20:00~23:00 5분, 23:00~24:30 8분",
+]

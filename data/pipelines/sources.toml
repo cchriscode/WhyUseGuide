@@ -1,6 +1,7 @@
 # 데이터 출처 목록 (PRD §8 data_sources). 상업 이용 가능 여부는 docs/data-licenses.md.
 # kind: gtfs = OTP 그래프 입력 후보, file = 그 밖의 원자료
 # city: gtfs 출처의 역·노선을 적재할 도시 코드(cities.code)
+# url이 "local:"이면 받지 않고 이 저장소에서 만든다(build-approx). estimated = true면 노선을 "예상"으로 적재한다.
 
 [[source]]
 id = "toei-train-gtfs"
@@ -20,3 +21,14 @@ license = "CC BY 4.0"
 attribution = "「国土数値情報（鉄道データ）」（国土交通省）を加工して作成"
 refresh = "yearly"
 otp = false
+
+[[source]]
+id = "approx-tokyo"
+kind = "gtfs"
+url = "local:approx_lines.toml"
+license = "CC BY 4.0 (국토수치정보 N02) + 자체 요약 사실"
+attribution = "「国土数値情報（鉄道データ）」（国土交通省）を加工して作成"
+refresh = "시간표 개정 때"
+otp = true
+city = "tokyo"
+estimated = true

@@ -7,6 +7,7 @@ PIPELINES_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = PIPELINES_DIR.parents[1]
 DEFAULT_REGISTRY = PIPELINES_DIR / "sources.toml"
 KOREAN_NAMES = PIPELINES_DIR / "names_ko.toml"
+APPROX_LINES = PIPELINES_DIR / "approx_lines.toml"
 RAW_DIR = REPO_ROOT / "data" / "raw"
 OTP_DIR = REPO_ROOT / "infra" / "otp"
 
@@ -21,9 +22,16 @@ class Source:
     refresh: str
     otp: bool
     city: str | None = None
+    estimated: bool = False
+
+    @property
+    def local(self) -> bool:
+        return self.url.startswith("local:")
 
     @property
     def filename(self) -> str:
+        if self.local:
+            return f"{self.id}.gtfs.zip"
         return self.url.rsplit("/", 1)[-1].split("?", 1)[0]
 
 

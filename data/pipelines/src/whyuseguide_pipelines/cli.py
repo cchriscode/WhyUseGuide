@@ -9,10 +9,11 @@ import httpx
 from sqlalchemy import create_engine
 
 from whyuseguide_api.config import Settings
+from whyuseguide_pipelines.approx import build_feed, load_lines, station_index
 from whyuseguide_pipelines.fetch import fetch
 from whyuseguide_pipelines.gtfs import read_network, validate_feed
 from whyuseguide_pipelines.load import KoreanNames, apply_korean_names, load_network
-from whyuseguide_pipelines.sources import KOREAN_NAMES, OTP_DIR, RAW_DIR, Source, load_sources
+from whyuseguide_pipelines.sources import APPROX_LINES, KOREAN_NAMES, OTP_DIR, RAW_DIR, Source, load_sources
 
 
 def _select(sources: list[Source], ids: Sequence[str]) -> list[Source]:
@@ -28,6 +29,9 @@ def _select(sources: list[Source], ids: Sequence[str]) -> list[Source]:
 def cmd_fetch(sources: list[Source]) -> int:
     with httpx.Client(timeout=120, follow_redirects=True) as client:
         for s in sources:
+            if s.local:
+                print(f"{s.id}: built locally (wug-data build-approx)")
+                continue
             path = fetch(s, RAW_DIR, client)
             print(f"fetched {s.id}: {path.relative_to(RAW_DIR)} ({path.stat().st_size:,} bytes)")
     return 0
@@ -80,7 +84,7 @@ def cmd_load_db(sources: list[Source]) -> int:
             failed += 1
             continue
         with engine.begin() as conn:
-            r = load_network(conn, s.id, s.city, read_network(path))
+            r = load_network(conn, s.id, s.city, read_network(path), estimated=s.estimated)
             n = apply_korean_names(conn, s.id, names)
         print(
             f"loaded {s.id}: lines={r.lines} stops={r.stops} stop_lines={r.stop_lines} "
@@ -91,16 +95,31 @@ def cmd_load_db(sources: list[Source]) -> int:
     return 1 if failed else 0
 
 
+def cmd_build_approx(sources: list[Source]) -> int:
+    """approx_lines.toml + 국토수치정보 N02 역 위치로 근사 GTFS를 만든다."""
+    n02 = RAW_DIR / "mlit-n02-2025" / "N02-25_GML.zip"
+    if not n02.exists():
+        raise SystemExit("국토수치정보 N02가 없다: uv run wug-data fetch mlit-n02-2025")
+    lines = load_lines(APPROX_LINES)
+    today = date.today()
+    for s in (s for s in sources if s.local):
+        out = RAW_DIR / s.id / s.filename
+        counts = build_feed(lines, station_index(n02), out, today, today.replace(year=today.year + 1))
+        print(f"built {s.id}: lines={counts['lines']} stops={counts['stops']} trips={counts['trips']}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="wug-data", description="WhyUseGuide 데이터 파이프라인")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("fetch", "validate", "stage-otp", "load-db"):
+    for name in ("fetch", "build-approx", "validate", "stage-otp", "load-db"):
         p = sub.add_parser(name)
         p.add_argument("ids", nargs="*", help="sources.toml의 id (생략하면 전체)")
     args = parser.parse_args(argv)
     sources = _select(load_sources(), args.ids)
     commands = {
         "fetch": cmd_fetch,
+        "build-approx": cmd_build_approx,
         "validate": cmd_validate,
         "stage-otp": cmd_stage_otp,
         "load-db": cmd_load_db,
