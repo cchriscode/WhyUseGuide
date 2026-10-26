@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["services/api", "data/pipelines"]
+members = ["services/api", "services/engine", "data/pipelines"]
 
 [tool.ruff]
 line-length = 110
@@ -11,9 +11,10 @@ select = ["E", "F", "I", "UP", "B", "ASYNC"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
+plugins = ["pydantic.mypy"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["whyuseguide_api", "whyuseguide_pipelines"]
+known-first-party = ["whyuseguide_api", "whyuseguide_pipelines", "itinerary_engine"]
 
 [tool.ruff.lint.per-file-ignores]
 "services/api/migrations/versions/*" = ["E501"]

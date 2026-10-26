@@ -9,6 +9,7 @@ resolution-markers = [
 [manifest]
 members = [
     "whyuseguide-api",
+    "whyuseguide-engine",
     "whyuseguide-pipelines",
 ]
 
@@ -1436,6 +1437,25 @@ dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.17.2" },
 ]
+
+[[package]]
+name = "whyuseguide-engine"
+version = "0.0.0"
+source = { editable = "services/engine" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.14.1" }]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.1.1" }]
 
 [[package]]
 name = "whyuseguide-pipelines"
