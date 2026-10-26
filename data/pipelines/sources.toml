@@ -1,5 +1,6 @@
 # 데이터 출처 목록 (PRD §8 data_sources). 상업 이용 가능 여부는 docs/data-licenses.md.
 # kind: gtfs = OTP 그래프 입력 후보, file = 그 밖의 원자료
+# city: gtfs 출처의 역·노선을 적재할 도시 코드(cities.code)
 
 [[source]]
 id = "toei-train-gtfs"
@@ -9,6 +10,7 @@ license = "CC BY 4.0"
 attribution = "東京都交通局・公共交通オープンデータセンター (CC BY 4.0)"
 refresh = "weekly"
 otp = true
+city = "tokyo"
 
 [[source]]
 id = "mlit-n02-2025"

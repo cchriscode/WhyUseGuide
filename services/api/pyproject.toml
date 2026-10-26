@@ -3,7 +3,9 @@ name = "whyuseguide-api"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.20.1",
     "fastapi>=0.162.0",
+    "geoalchemy2>=0.20.0",
     "httpx>=0.28.1",
     "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.16.1",

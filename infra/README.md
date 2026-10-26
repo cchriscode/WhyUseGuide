@@ -24,4 +24,12 @@ curl http://localhost:8000/health   # db·redis·otp 모두 ok면 200
 | otp | 18080 |
 | api | 8000 |
 
-P0 그래프는 도쿄 OSM만 담는다(도보·자동차). 대중교통 GTFS는 P1에서 더한다(`docs/data-licenses.md`).
+## DB 스키마와 데이터
+
+```bash
+(cd services/api && uv run alembic upgrade head)   # 스키마 + 일본·도쿄 기본 행
+uv run wug-data fetch && uv run wug-data load-db   # 역·노선 적재 (data/pipelines/README.md)
+uv run wug-data stage-otp                          # GTFS를 OTP 입력으로 넣은 뒤 그래프 다시 빌드
+```
+
+DB 적재 테스트는 `TEST_DATABASE_URL`(예: `postgresql+psycopg://whyuseguide:whyuseguide@localhost:15432/whyuseguide`)이 있을 때 돈다. 테스트 데이터는 롤백된다.

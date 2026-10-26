@@ -4,6 +4,7 @@ version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28.1",
+    "whyuseguide-api",
 ]
 
 [dependency-groups]
@@ -20,3 +21,6 @@ build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+whyuseguide-api = { workspace = true }

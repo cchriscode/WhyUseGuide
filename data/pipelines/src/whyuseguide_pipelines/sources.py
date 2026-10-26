@@ -19,6 +19,7 @@ class Source:
     attribution: str
     refresh: str
     otp: bool
+    city: str | None = None
 
     @property
     def filename(self) -> str:
@@ -38,4 +39,6 @@ def load_sources(path: Path = DEFAULT_REGISTRY) -> list[Source]:
             raise ValueError(f"{s.id}: unknown kind {s.kind!r}")
         if s.otp and s.kind != "gtfs":
             raise ValueError(f"{s.id}: only gtfs sources can feed OTP")
+        if s.kind == "gtfs" and not s.city:
+            raise ValueError(f"{s.id}: gtfs sources need a city")
     return sources

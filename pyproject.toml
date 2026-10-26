@@ -14,3 +14,6 @@ strict = true
 
 [tool.ruff.lint.isort]
 known-first-party = ["whyuseguide_api", "whyuseguide_pipelines"]
+
+[tool.ruff.lint.per-file-ignores]
+"services/api/migrations/versions/*" = ["E501"]

@@ -5,9 +5,12 @@ from collections.abc import Sequence
 from datetime import date
 
 import httpx
+from sqlalchemy import create_engine
 
+from whyuseguide_api.config import Settings
 from whyuseguide_pipelines.fetch import fetch
-from whyuseguide_pipelines.gtfs import validate_feed
+from whyuseguide_pipelines.gtfs import read_network, validate_feed
+from whyuseguide_pipelines.load import load_network
 from whyuseguide_pipelines.sources import OTP_DIR, RAW_DIR, Source, load_sources
 
 
@@ -61,15 +64,41 @@ def cmd_stage_otp(sources: list[Source]) -> int:
     return 0 if staged else 1
 
 
+def cmd_load_db(sources: list[Source]) -> int:
+    """검증을 통과한 GTFS의 역·노선을 DB(stops, lines, stop_lines)에 적재한다."""
+    engine = create_engine(Settings().database_url)
+    failed = 0
+    for s in (s for s in sources if s.kind == "gtfs"):
+        path = RAW_DIR / s.id / s.filename
+        report = validate_feed(path, date.today())
+        if not report.ok or s.city is None:
+            print(f"{s.id}: skipped ({'; '.join(report.errors)})")
+            failed += 1
+            continue
+        with engine.begin() as conn:
+            r = load_network(conn, s.id, s.city, read_network(path))
+        print(
+            f"loaded {s.id}: lines={r.lines} stops={r.stops} stop_lines={r.stop_lines} "
+            f"removed lines={r.removed_lines} stops={r.removed_stops}"
+        )
+    engine.dispose()
+    return 1 if failed else 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="wug-data", description="WhyUseGuide 데이터 파이프라인")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("fetch", "validate", "stage-otp"):
+    for name in ("fetch", "validate", "stage-otp", "load-db"):
         p = sub.add_parser(name)
         p.add_argument("ids", nargs="*", help="sources.toml의 id (생략하면 전체)")
     args = parser.parse_args(argv)
     sources = _select(load_sources(), args.ids)
-    commands = {"fetch": cmd_fetch, "validate": cmd_validate, "stage-otp": cmd_stage_otp}
+    commands = {
+        "fetch": cmd_fetch,
+        "validate": cmd_validate,
+        "stage-otp": cmd_stage_otp,
+        "load-db": cmd_load_db,
+    }
     return commands[args.command](sources)
 
 
