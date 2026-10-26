@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from whyuseguide_api import errors
 from whyuseguide_api.config import Settings
 from whyuseguide_api.health import build_checks, run_checks
-from whyuseguide_api.routers import auth, catalog
+from whyuseguide_api.routers import auth, catalog, trips
 
 
 @asynccontextmanager
@@ -33,6 +33,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     errors.install(app)
     app.include_router(auth.router)
     app.include_router(catalog.router)
+    app.include_router(trips.router)
 
     @app.get("/health")
     async def health(request: Request) -> JSONResponse:
