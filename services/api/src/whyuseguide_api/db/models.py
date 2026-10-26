@@ -226,3 +226,123 @@ class PlaceTag(TimestampedTable):
     tag: Mapped[str] = mapped_column(Text)
     weight: Mapped[Decimal] = mapped_column(Numeric(3, 2))
     source: Mapped[TagSource] = mapped_column(Enum(TagSource, name="tag_source"))
+
+
+class User(TimestampedTable):
+    """게스트도 사용자다(기기 임시 계정, F-30).
+
+    로그인하면 email·auth_provider가 채워지고 is_guest가 꺼진다.
+    """
+
+    __tablename__ = "users"
+
+    email: Mapped[str | None] = mapped_column(Text, unique=True)
+    auth_provider: Mapped[str] = mapped_column(Text, server_default="guest")
+    is_guest: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    locale: Mapped[str] = mapped_column(Text, server_default="ko")
+
+
+class AuthToken(TimestampedTable):
+    """Bearer 토큰. 원문은 저장하지 않고 SHA-256만 둔다. 만료 30일(PRD §10)."""
+
+    __tablename__ = "auth_tokens"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Trip(TimestampedTable):
+    __tablename__ = "trips"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    city_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cities.id"))
+    trip_style: Mapped[str] = mapped_column(Text, server_default="city")
+    start_date: Mapped[date] = mapped_column(Date)
+    days: Mapped[int] = mapped_column(SmallInteger)
+    adults: Mapped[int] = mapped_column(SmallInteger, server_default="1")
+    children: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    companion: Mapped[str | None] = mapped_column(Text)
+    tastes: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
+    pace: Mapped[str] = mapped_column(Text, server_default="normal")
+    budget: Mapped[str] = mapped_column(Text, server_default="normal")
+    mix: Mapped[int] = mapped_column(SmallInteger, server_default="50")
+    day_end_time: Mapped[time | None] = mapped_column(Time)
+    plan_mode: Mapped[str | None] = mapped_column(Text)  # 3안 중 고른 이동 방식(고르기 전 NULL)
+    prefs: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")  # 평가로 바뀐 가중치(§5.6)
+
+
+class TripFixedBooking(TimestampedTable):
+    __tablename__ = "trip_fixed_bookings"
+
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"))
+    place_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("places.id"))
+    date: Mapped[date] = mapped_column(Date)
+    time: Mapped[time] = mapped_column(Time)
+
+
+class TripDay(TimestampedTable):
+    __tablename__ = "trip_days"
+    __table_args__ = (UniqueConstraint("trip_id", "day_index"),)
+
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"))
+    day_index: Mapped[int] = mapped_column(SmallInteger)
+    date: Mapped[date] = mapped_column(Date)
+    start_time: Mapped[time] = mapped_column(Time)
+    plan_mode: Mapped[str] = mapped_column(Text, server_default="balance")  # 그날 이동 방식(S-03 칩)
+    cur_index: Mapped[int] = mapped_column(SmallInteger, server_default="-1")  # 지금 있는 장소, 출발 전 -1
+    delay_gap: Mapped[int | None] = mapped_column(SmallInteger)
+    delay_min: Mapped[int | None] = mapped_column(SmallInteger)
+    kind: Mapped[str] = mapped_column(Text, server_default="normal")
+    start_location: Mapped[WKBElement | None] = mapped_column(
+        Geography(geometry_type="POINT", srid=4326, spatial_index=False)
+    )
+    end_location: Mapped[WKBElement | None] = mapped_column(
+        Geography(geometry_type="POINT", srid=4326, spatial_index=False)
+    )
+    version: Mapped[int] = mapped_column(Integer, server_default="1")  # 동시 편집 충돌(409) 확인
+
+
+class ItineraryItem(TimestampedTable):
+    __tablename__ = "itinerary_items"
+    __table_args__ = (UniqueConstraint("trip_day_id", "position"),)
+
+    trip_day_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trip_days.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(SmallInteger)
+    place_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("places.id"))
+    stay_min: Mapped[int | None] = mapped_column(SmallInteger)  # NULL이면 장소 기본 체류
+    fixed_at: Mapped[time | None] = mapped_column(Time)  # 고정 예약 시각
+    status: Mapped[str] = mapped_column(Text, server_default="planned")  # planned/done/skipped
+
+
+class ItinerarySnapshot(TimestampedTable):
+    """되돌리기·분석용 일정 사본. reason: generate(처음 생성, 이동 방식별) / user_edit / auto_adjust."""
+
+    __tablename__ = "itinerary_snapshots"
+
+    trip_day_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trip_days.id", ondelete="CASCADE"))
+    items: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    reason: Mapped[str] = mapped_column(Text)
+    plan_mode: Mapped[str | None] = mapped_column(Text)
+    messages: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
+
+
+class CourseRating(TimestampedTable):
+    __tablename__ = "course_ratings"
+
+    trip_day_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trip_days.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    stars: Mapped[int] = mapped_column(SmallInteger)
+    tags: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
+    route_accuracy: Mapped[str | None] = mapped_column(Text)  # ok/bit/off
+    apply_next: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    share_anon: Mapped[bool] = mapped_column(Boolean, server_default="true")
+
+
+class CoursePlaceVote(TimestampedTable):
+    __tablename__ = "course_place_votes"
+    __table_args__ = (UniqueConstraint("course_rating_id", "place_id"),)
+
+    course_rating_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("course_ratings.id", ondelete="CASCADE"))
+    place_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("places.id"))
+    vote: Mapped[int] = mapped_column(SmallInteger)  # +1 / -1

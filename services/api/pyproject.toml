@@ -12,6 +12,7 @@ dependencies = [
     "redis>=8.1.0",
     "sqlalchemy[asyncio]>=2.1.6",
     "uvicorn[standard]>=0.54.0",
+    "whyuseguide-engine",
 ]
 
 [dependency-groups]
@@ -27,3 +28,6 @@ build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+whyuseguide-engine = { workspace = true }

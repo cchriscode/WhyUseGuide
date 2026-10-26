@@ -1640,6 +1640,7 @@ dependencies = [
     { name = "redis" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "whyuseguide-engine" },
 ]
 
 [package.dev-dependencies]
@@ -1660,6 +1661,7 @@ requires-dist = [
     { name = "redis", specifier = ">=8.1.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.6" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.54.0" },
+    { name = "whyuseguide-engine", editable = "services/engine" },
 ]
 
 [package.metadata.requires-dev]
