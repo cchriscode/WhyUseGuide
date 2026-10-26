@@ -429,9 +429,9 @@ PostgreSQL + PostGIS. 모든 테이블에 `id`(UUID), `created_at`, `updated_at`
 | place\_hours | place\_id, weekday(0\~6), open\_time, close\_time, last\_entry\_time | 휴무일은 행 없음, 특별 휴무는 place\_closures |
 | place\_closures | place\_id, date, reason |  |
 | place\_tags | place\_id, tag, weight(0\~1), source(llm/editor/user) | 취향 매칭용 |
-| stops | city\_id, source\_id, gtfs\_stop\_id, code, name\_ko, name\_local, name\_en, location, parent\_station\_id | GTFS에서 적재. source\_id = `data/pipelines/sources.toml`의 출처 id, code = 역 번호(A-18 등). name\_ko는 GTFS에 없어 편집 단계에서 채움 |
+| stops | city\_id, source\_id, gtfs\_stop\_id, code, name\_ko, name\_ko\_source, name\_local, name\_en, location, parent\_station\_id | GTFS에서 적재. source\_id = `data/pipelines/sources.toml`의 출처 id, code = 역 번호(A-18 등). name\_ko는 GTFS에 없어 로마자 → 한글 기계 변환(국립국어원 일본어 표기법) 또는 편집 목록으로 채움. name\_ko\_source = official/editor/machine |
 | stop\_lines | stop\_id, line\_id |  |
-| lines | city\_id, source\_id, gtfs\_route\_id, name\_ko, name\_local, name\_en, color\_hex, operator, estimated | 노선 색은 GTFS route\_color. estimated = 근사 노선("예상", `docs/data-licenses.md`) |
+| lines | city\_id, source\_id, gtfs\_route\_id, name\_ko, name\_ko\_source, name\_local, name\_en, color\_hex, operator, estimated | 노선 색은 GTFS route\_color. estimated = 근사 노선("예상", `docs/data-licenses.md`) |
 | stop\_exits | stop\_id, name, location, has\_elevator | 2단계, OSM·운영사 |
 | car\_positions | stop\_id, line\_id, direction, best\_cars(int\[\]), for\_exit | 탈 칸 위치, 수작업·제보 |
 | alt\_courses | city\_id, name\_ko, kind(rain/local/...), place\_ids(uuid\[\]) | 대체 코스 정의 |
@@ -650,7 +650,7 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 | 위치·개인정보 | 위치는 기기에서만 사용(현재 위치 표시·도착 판단), 서버에는 도착 체크 이벤트만 전송. 익명 공유 동의는 평가 화면 토글로 받고 언제든 철회. 개인정보 처리방침·위치정보 이용약관 필요 |
 | 보안 | 토큰 만료 30일 + 갱신, 모든 API HTTPS, 제휴 URL은 서버 허용 목록에서만 생성 |
 | 접근성 | 대비 4.5:1, 터치 44pt, 동적 글자 크기, 스크린리더 라벨 (9장) |
-| 다국어 | UI 한국어 고정(문자열은 i18n 키로 분리), 장소명 한국어 + 현지어 병기 |
+| 다국어 | UI 한국어 고정(문자열은 i18n 키로 분리), 장소명 한국어 + 현지어 병기. 역·노선의 한국어 이름이 기계 변환(name\_ko\_source = machine)이면 "기계 번역" 표시 (ODPT 개발자 가이드라인 5) |
 | 안정성 | OTP·외부 API 장애 시 근사 계산으로 계속 동작, 크래시 없는 세션 99.5% |
 | 관측성 | API 요청 로그, 엔진 입력·출력 스냅샷(itinerary\_snapshots), 오류 추적 도구 연동 |
 

@@ -1,6 +1,7 @@
 import argparse
 import shutil
 import sys
+import tomllib
 from collections.abc import Sequence
 from datetime import date
 
@@ -10,8 +11,8 @@ from sqlalchemy import create_engine
 from whyuseguide_api.config import Settings
 from whyuseguide_pipelines.fetch import fetch
 from whyuseguide_pipelines.gtfs import read_network, validate_feed
-from whyuseguide_pipelines.load import load_network
-from whyuseguide_pipelines.sources import OTP_DIR, RAW_DIR, Source, load_sources
+from whyuseguide_pipelines.load import KoreanNames, apply_korean_names, load_network
+from whyuseguide_pipelines.sources import KOREAN_NAMES, OTP_DIR, RAW_DIR, Source, load_sources
 
 
 def _select(sources: list[Source], ids: Sequence[str]) -> list[Source]:
@@ -66,6 +67,9 @@ def cmd_stage_otp(sources: list[Source]) -> int:
 
 def cmd_load_db(sources: list[Source]) -> int:
     """검증을 통과한 GTFS의 역·노선을 DB(stops, lines, stop_lines)에 적재한다."""
+    with KOREAN_NAMES.open("rb") as f:
+        edited = tomllib.load(f)
+    names = KoreanNames(lines=edited.get("lines", {}), stops=edited.get("stops", {}))
     engine = create_engine(Settings().database_url)
     failed = 0
     for s in (s for s in sources if s.kind == "gtfs"):
@@ -77,10 +81,12 @@ def cmd_load_db(sources: list[Source]) -> int:
             continue
         with engine.begin() as conn:
             r = load_network(conn, s.id, s.city, read_network(path))
+            n = apply_korean_names(conn, s.id, names)
         print(
             f"loaded {s.id}: lines={r.lines} stops={r.stops} stop_lines={r.stop_lines} "
             f"removed lines={r.removed_lines} stops={r.removed_stops}"
         )
+        print(f"  name_ko: editor={n.editor} machine={n.machine} official={n.official} missing={n.missing}")
     engine.dispose()
     return 1 if failed else 0
 

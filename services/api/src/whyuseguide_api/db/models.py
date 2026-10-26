@@ -46,6 +46,14 @@ class DataTier(enum.StrEnum):
     reference = "reference"
 
 
+class NameSource(enum.StrEnum):
+    """name_ko의 출처. machine이면 앱이 "기계 번역"으로 표시한다(ODPT 개발자 가이드라인 5)."""
+
+    official = "official"
+    editor = "editor"
+    machine = "machine"
+
+
 class CityKind(enum.StrEnum):
     city = "city"
     region = "region"
@@ -89,6 +97,7 @@ class Line(TimestampedTable):
     source_id: Mapped[str] = mapped_column(Text)
     gtfs_route_id: Mapped[str] = mapped_column(Text)
     name_ko: Mapped[str | None] = mapped_column(Text)
+    name_ko_source: Mapped[NameSource | None] = mapped_column(Enum(NameSource, name="name_source"))
     name_local: Mapped[str] = mapped_column(Text)
     name_en: Mapped[str | None] = mapped_column(Text)
     color_hex: Mapped[str | None] = mapped_column(String(7))
@@ -108,6 +117,7 @@ class Stop(TimestampedTable):
     gtfs_stop_id: Mapped[str] = mapped_column(Text)
     code: Mapped[str | None] = mapped_column(Text)
     name_ko: Mapped[str | None] = mapped_column(Text)
+    name_ko_source: Mapped[NameSource | None] = mapped_column(Enum(NameSource, name="name_source"))
     name_local: Mapped[str] = mapped_column(Text)
     name_en: Mapped[str | None] = mapped_column(Text)
     location: Mapped[WKBElement] = mapped_column(

@@ -4,11 +4,11 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from sqlalchemy import Connection, create_engine, select
+from sqlalchemy import Connection, create_engine, select, update
 
-from whyuseguide_api.db.models import Line, Stop, StopLine
+from whyuseguide_api.db.models import Line, NameSource, Stop, StopLine
 from whyuseguide_pipelines.gtfs import GtfsLine, GtfsStop, Network, read_network
-from whyuseguide_pipelines.load import load_network
+from whyuseguide_pipelines.load import KoreanNames, apply_korean_names, load_network
 
 FEED = {
     "agency.txt": "agency_id,agency_name,agency_url,agency_timezone\ntoei,東京都交通局,https://x,Asia/Tokyo\n",
@@ -127,3 +127,44 @@ def test_load_leaves_other_sources_alone(conn: Connection) -> None:
     load_network(conn, "test-a", "tokyo", network(("102", "蔵前")))
     assert rows(conn, "test-b") == ({"101": "別の駅"}, {"1": "浅草線"}, 1)
     assert rows(conn, "test-a")[0] == {"102": "蔵前"}
+
+
+@needs_db
+def test_korean_names(conn: Connection) -> None:
+    net = Network(
+        lines=[GtfsLine("1", "浅草線", "Asakusa Line", None, "東京都交通局")],
+        stops=[
+            GtfsStop("101", None, "浅草", "Asakusa", 35.7, 139.79, None),
+            GtfsStop("102", None, "蔵前", "Kuramae", 35.7, 139.79, None),
+            GtfsStop("103", None, "押上", "Oshiage", 35.7, 139.79, None),
+            GtfsStop("104", None, "謎", None, 35.7, 139.79, None),
+        ],
+        stop_lines=set(),
+    )
+    load_network(conn, "test-ko", "tokyo", net)
+    conn.execute(
+        update(Stop)
+        .where(Stop.source_id == "test-ko", Stop.gtfs_stop_id == "103")
+        .values(name_ko="오시아게(스카이트리)", name_ko_source=NameSource.official)
+    )
+
+    edited = KoreanNames(lines={}, stops={"蔵前": "쿠라마에"})
+    result = apply_korean_names(conn, "test-ko", edited)
+    assert (result.editor, result.machine, result.official, result.missing) == (1, 2, 1, 1)
+
+    def names() -> dict[str, tuple[str | None, NameSource | None]]:
+        q = select(Stop.gtfs_stop_id, Stop.name_ko, Stop.name_ko_source).where(Stop.source_id == "test-ko")
+        return {sid: (ko, src) for sid, ko, src in conn.execute(q)}
+
+    assert names() == {
+        "101": ("아사쿠사", NameSource.machine),
+        "102": ("쿠라마에", NameSource.editor),
+        "103": ("오시아게(스카이트리)", NameSource.official),
+        "104": (None, None),
+    }
+    line_ko = conn.execute(select(Line.name_ko).where(Line.source_id == "test-ko")).scalar_one()
+    assert line_ko == "아사쿠사선"
+
+    # 편집 목록에서 빠지면 기계 변환으로 돌아간다
+    apply_korean_names(conn, "test-ko", KoreanNames(lines={}, stops={}))
+    assert names()["102"] == ("구라마에", NameSource.machine)

@@ -6,6 +6,7 @@ from typing import Literal
 PIPELINES_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = PIPELINES_DIR.parents[1]
 DEFAULT_REGISTRY = PIPELINES_DIR / "sources.toml"
+KOREAN_NAMES = PIPELINES_DIR / "names_ko.toml"
 RAW_DIR = REPO_ROOT / "data" / "raw"
 OTP_DIR = REPO_ROOT / "infra" / "otp"
 

@@ -41,3 +41,9 @@ PRD를 바꾼 결정을 날짜와 함께 남긴다 (PRD §11 작업 규칙).
 - `stops`·`lines`에 `source_id`(출처 id)를 더하고 (source\_id, gtfs id)를 고유 키로 둔다. 도에이 route\_id "1"처럼 피드마다 id가 겹치기 때문이다.
 - `stops`에 `code`(역 번호), `name_en`, `lines`에 `name_en`, `estimated`(근사 노선)를 더했다. 도에이 GTFS에는 한국어 이름이 없어 `name_ko`는 편집 단계에서 채운다(기계 번역을 쓰면 ODPT 가이드라인에 따라 표시).
 - 적재는 출처 단위로 DB와 맞춘다: 있으면 갱신, 없으면 추가, 피드에서 빠진 역·노선은 삭제. 역별 노선(`stop_lines`)은 실제 운행(stop\_times)에서 뽑는다.
+
+## 2026-10-26 · 역·노선 한국어 이름 (F-11, F-13)
+
+- GTFS·ODPT 공개 데이터에 한국어 이름이 없어, 영어(헵번식 로마자) 이름을 국립국어원 일본어 표기법으로 한글 변환한다(`data/pipelines/.../ko_names.py`). 규칙 기반이라 결과가 항상 같고 LLM을 쓰지 않는다(PRD §0의 LLM 사용 범위 유지).
+- 표기법을 기본으로 하고(첫머리 예사소리 "구라마에", つ = "쓰"), 관용이 다르거나 규칙으로 안 되는 이름은 `data/pipelines/names_ko.toml` 편집 목록으로 덮어쓴다.
+- 이름마다 `name_ko_source`(official/editor/machine)를 저장한다. machine이면 앱이 "기계 번역"으로 표시한다(ODPT 개발자 가이드라인 5). 공식 한국어 이름이 생기면 official로 넣고 덮어쓰지 않는다.

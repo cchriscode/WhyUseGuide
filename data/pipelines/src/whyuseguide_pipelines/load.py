@@ -3,8 +3,9 @@ from dataclasses import dataclass
 from sqlalchemy import Connection, delete, func, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 
-from whyuseguide_api.db.models import City, Line, Stop, StopLine
+from whyuseguide_api.db.models import City, Line, NameSource, Stop, StopLine
 from whyuseguide_pipelines.gtfs import Network
+from whyuseguide_pipelines.ko_names import line_name_ko, romaji_to_hangul
 
 
 @dataclass
@@ -108,3 +109,57 @@ def load_network(conn: Connection, source_id: str, city_code: str, network: Netw
         removed_lines=removed_lines,
         removed_stops=removed_stops,
     )
+
+
+@dataclass(frozen=True)
+class KoreanNames:
+    """names_ko.toml 편집 목록 (현지어 이름 → 한국어)."""
+
+    lines: dict[str, str]
+    stops: dict[str, str]
+
+
+@dataclass
+class NamingResult:
+    editor: int = 0
+    machine: int = 0
+    official: int = 0
+    missing: int = 0
+
+
+def apply_korean_names(conn: Connection, source_id: str, names: KoreanNames) -> NamingResult:
+    """name_ko를 채운다.
+
+    공식 이름(official)은 그대로 두고, 편집 목록에 있으면 editor, 나머지는 기계 변환(machine)이다.
+    """
+    result = NamingResult()
+    targets = (
+        (Line, names.lines, line_name_ko),
+        (Stop, names.stops, romaji_to_hangul),
+    )
+    for model, edited, convert in targets:
+        rows = conn.execute(
+            select(model.id, model.name_local, model.name_en, model.name_ko_source).where(
+                model.source_id == source_id
+            )
+        )
+        for row_id, name_local, name_en, current in rows.all():
+            if current == NameSource.official:
+                result.official += 1
+                continue
+            name_ko: str | None
+            source: NameSource | None
+            if name_local in edited:
+                name_ko, source = edited[name_local], NameSource.editor
+                result.editor += 1
+            else:
+                name_ko = convert(name_en) if name_en else None
+                source = NameSource.machine if name_ko else None
+                if name_ko:
+                    result.machine += 1
+                else:
+                    result.missing += 1
+            conn.execute(
+                update(model).where(model.id == row_id).values(name_ko=name_ko, name_ko_source=source)
+            )
+    return result
