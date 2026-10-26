@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["services/api"]
+members = ["services/api", "data/pipelines"]
 
 [tool.ruff]
 line-length = 110
@@ -13,4 +13,4 @@ python_version = "3.12"
 strict = true
 
 [tool.ruff.lint.isort]
-known-first-party = ["whyuseguide_api"]
+known-first-party = ["whyuseguide_api", "whyuseguide_pipelines"]

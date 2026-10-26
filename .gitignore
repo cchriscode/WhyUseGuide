@@ -19,3 +19,7 @@ infra/otp/*.pbf
 infra/otp/*.part
 infra/otp/graph.obj
 infra/otp/*.log
+
+# 파이프라인이 받은 원자료
+data/raw/
+infra/otp/*.zip
