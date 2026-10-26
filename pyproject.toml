@@ -18,3 +18,7 @@ known-first-party = ["whyuseguide_api", "whyuseguide_pipelines", "itinerary_engi
 
 [tool.ruff.lint.per-file-ignores]
 "services/api/migrations/versions/*" = ["E501"]
+
+[[tool.mypy.overrides]]
+module = ["ortools.*"]
+ignore_missing_imports = true
