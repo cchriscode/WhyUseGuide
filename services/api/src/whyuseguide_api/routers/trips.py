@@ -115,7 +115,7 @@ def _t(hhmm: str) -> time:
     return time(int(h), int(m))
 
 
-def _hhmm(t: time) -> str:
+def hhmm(t: time) -> str:
     return t.strftime("%H:%M")
 
 
@@ -148,7 +148,7 @@ def day_payload(
         "dayIndex": day.day_index,
         "day": {
             "date": day.date.isoformat(),
-            "start": _hhmm(day.start_time),
+            "start": hhmm(day.start_time),
             "curIndex": day.cur_index,
             "planMode": day.plan_mode,
             "totals": result.totals.model_dump(by_alias=True, mode="json"),
@@ -199,9 +199,7 @@ async def day_items(session: AsyncSession, day: TripDay) -> list[Item]:
         )
     ).scalars()
     return [
-        Item(
-            place_id=str(r.place_id), stay_min=r.stay_min, fixed_at=_hhmm(r.fixed_at) if r.fixed_at else None
-        )
+        Item(place_id=str(r.place_id), stay_min=r.stay_min, fixed_at=hhmm(r.fixed_at) if r.fixed_at else None)
         for r in rows
     ]
 
@@ -221,7 +219,7 @@ async def save_items(session: AsyncSession, day: TripDay, items: list[Item]) -> 
         )
 
 
-def _items_json(items: list[Item] | tuple[Item, ...]) -> list[dict[str, Any]]:
+def items_json(items: list[Item] | tuple[Item, ...]) -> list[dict[str, Any]]:
     return [it.model_dump(by_alias=True) for it in items]
 
 
@@ -242,7 +240,7 @@ async def engine_day(session: AsyncSession, trip: Trip, day: TripDay, items: lis
     s_lat, s_lon, e_lat, e_lon = lodging.one()
     return EngineDay(
         date=day.date.isoformat(),
-        start=_hhmm(day.start_time),
+        start=hhmm(day.start_time),
         items=tuple(items),
         places=places,
         city=await bridge.city_network(session, trip.city_id),
@@ -250,7 +248,7 @@ async def engine_day(session: AsyncSession, trip: Trip, day: TripDay, items: lis
         delay={"gap": day.delay_gap, "minutes": day.delay_min} if day.delay_gap is not None else None,
         start_point=Point(lat=s_lat, lon=s_lon) if s_lat is not None else None,
         end_point=Point(lat=e_lat, lon=e_lon) if e_lat is not None else None,
-        day_end=_hhmm(trip.day_end_time) if trip.day_end_time else None,
+        day_end=hhmm(trip.day_end_time) if trip.day_end_time else None,
     )
 
 
@@ -393,7 +391,7 @@ async def create_trip(body: TripCreate, session: Session, user: CurrentUser) -> 
             session.add(
                 ItinerarySnapshot(
                     trip_day_id=day.id,
-                    items=_items_json([by_id[p] for p in order]),
+                    items=items_json([by_id[p] for p in order]),
                     reason="generate",
                     plan_mode=mode,
                 )
@@ -521,7 +519,7 @@ async def patch_day(
             session.add(
                 ItinerarySnapshot(
                     trip_day_id=day.id,
-                    items=_items_json(edited),
+                    items=items_json(edited),
                     reason="auto_adjust",
                     messages=list(adjust.messages),
                 )

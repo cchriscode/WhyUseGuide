@@ -157,3 +157,38 @@ def test_fixed_booking_and_validation(client: TestClient, token: str, db: Engine
     assert bad_city.status_code == 422 and bad_city.json()["error"]["code"] == "unknown_city"
     no_taste = client.post("/v1/trips", json={**TRIP, "tastes": []}, headers=auth(token))
     assert no_taste.status_code == 422 and no_taste.json()["error"]["code"] == "invalid_request"
+
+
+def test_course_rating_updates_prefs_and_next_day(client: TestClient, token: str) -> None:
+    trip_id = create(client, token)["tripId"]
+    days = client.get(f"/v1/trips/{trip_id}", headers=auth(token)).json()["days"]
+    first_place = stops(days[0])[0]["placeId"]
+    r = client.post(
+        "/v1/course-ratings",
+        json={
+            "tripId": trip_id,
+            "dayIndex": 0,
+            "stars": 4,
+            "tags": ["일정이 빡빡했어요"],
+            "votes": {first_place: 1},
+            "routeAccuracy": "off",
+        },
+        headers=auth(token),
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert "하루 장소를 1곳 줄이고 장소 사이에 10분 여유를 둬요" in body["messages"]
+    assert body["prefs"]["placeCountDelta"] == -1 and body["prefs"]["slackMin"] == 10
+    assert body["verifyRoutes"] is True
+    nxt = body["nextDay"]
+    assert nxt is not None and nxt["dayIndex"] == 1
+    assert len(stops(nxt)) == len(stops(days[1])) - 1  # 하루 장소 1곳 줄었다
+    assert not {s["placeId"] for s in stops(nxt)} & {s["placeId"] for s in stops(days[0])}
+    assert nxt["version"] == days[1]["version"] + 1
+
+    bad = client.post(
+        "/v1/course-ratings",
+        json={"tripId": trip_id, "dayIndex": 0, "stars": 3, "votes": {stops(days[1])[0]["placeId"]: -1}},
+        headers=auth(token),
+    )
+    assert bad.status_code == 422 and bad.json()["error"]["code"] == "invalid_vote"

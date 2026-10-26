@@ -443,11 +443,12 @@ PostgreSQL + PostGIS. 모든 테이블에 `id`(UUID), `created_at`, `updated_at`
 | 테이블 | 주요 컬럼 | 메모 |
 | --- | --- | --- |
 | users | email, auth\_provider, is\_guest, locale | 게스트 → 로그인 시 병합 |
+| auth\_tokens | user\_id, token\_hash(SHA-256), expires\_at | Bearer 토큰, 원문은 저장하지 않음, 30일 만료 |
 | trips | user\_id, city\_id, trip\_style(city/area/multi\_city/road\_trip), start\_date, days, adults, children, companion, tastes(text\[\]), pace, budget, mix(0\~100), day\_end\_time, plan\_mode(fast/balance/cheap), prefs(jsonb) | prefs = 평가로 바뀐 가중치 (5.6) |
 | trip\_fixed\_bookings | trip\_id, place\_id, date, time | 고정 예약 |
-| trip\_days | trip\_id, day\_index, date, start\_time, cur\_index, delay\_gap, delay\_min, kind(normal/travel/day\_trip), start\_location, end\_location, area\_id(nullable) | cur\_index = 지금 있는 장소, start/end\_location = 그날 숙소 (13.4) |
-| itinerary\_items | trip\_day\_id, position, place\_id, stay\_min, is\_fixed, status(planned/done/skipped) | 순서 = position |
-| itinerary\_snapshots | trip\_day\_id, items(jsonb), reason(user\_edit/auto\_adjust/generate), messages(text\[\]) | 되돌리기·분석용 |
+| trip\_days | trip\_id, day\_index, date, start\_time, plan\_mode, version, cur\_index, delay\_gap, delay\_min, kind(normal/travel/day\_trip), start\_location, end\_location, area\_id(nullable) | cur\_index = 지금 있는 장소, start/end\_location = 그날 숙소 (13.4) |
+| itinerary\_items | trip\_day\_id, position, place\_id, stay\_min, fixed\_at(고정 예약 시각), status(planned/done/skipped) | 순서 = position |
+| itinerary\_snapshots | trip\_day\_id, items(jsonb), reason(user\_edit/auto\_adjust/generate), plan\_mode, messages(text\[\]) | 되돌리기·분석용. generate는 이동 방식별로 하나씩(3안·처음 코스 비교) |
 | leg\_cache | from\_place\_id, to\_place\_id, mode, depart\_bucket(15분), route(jsonb), minutes, fare, estimated, fetched\_at | OTP 결과 캐시 |
 
 **후기·평가**
