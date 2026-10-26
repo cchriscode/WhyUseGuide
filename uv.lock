@@ -1699,6 +1699,7 @@ source = { editable = "data/pipelines" }
 dependencies = [
     { name = "httpx" },
     { name = "whyuseguide-api" },
+    { name = "whyuseguide-engine" },
 ]
 
 [package.dev-dependencies]
@@ -1710,6 +1711,7 @@ dev = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "whyuseguide-api", editable = "services/api" },
+    { name = "whyuseguide-engine", editable = "services/engine" },
 ]
 
 [package.metadata.requires-dev]

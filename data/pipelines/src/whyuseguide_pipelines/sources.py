@@ -15,7 +15,7 @@ OTP_DIR = REPO_ROOT / "infra" / "otp"
 @dataclass(frozen=True)
 class Source:
     id: str
-    kind: Literal["gtfs", "file"]
+    kind: Literal["gtfs", "file", "sparql"]
     url: str
     license: str
     attribution: str
@@ -23,6 +23,7 @@ class Source:
     otp: bool
     city: str | None = None
     estimated: bool = False
+    query: str | None = None  # kind = sparql: data/pipelines 기준 쿼리 파일 경로
 
     @property
     def local(self) -> bool:
@@ -32,6 +33,8 @@ class Source:
     def filename(self) -> str:
         if self.local:
             return f"{self.id}.gtfs.zip"
+        if self.kind == "sparql":
+            return f"{self.id}.json"
         return self.url.rsplit("/", 1)[-1].split("?", 1)[0]
 
 
@@ -44,10 +47,12 @@ def load_sources(path: Path = DEFAULT_REGISTRY) -> list[Source]:
     if duplicates:
         raise ValueError(f"duplicate source ids: {sorted(duplicates)}")
     for s in sources:
-        if s.kind not in ("gtfs", "file"):
+        if s.kind not in ("gtfs", "file", "sparql"):
             raise ValueError(f"{s.id}: unknown kind {s.kind!r}")
         if s.otp and s.kind != "gtfs":
             raise ValueError(f"{s.id}: only gtfs sources can feed OTP")
         if s.kind == "gtfs" and not s.city:
             raise ValueError(f"{s.id}: gtfs sources need a city")
+        if s.kind == "sparql" and not (s.query and (PIPELINES_DIR / s.query).exists()):
+            raise ValueError(f"{s.id}: sparql sources need an existing query file")
     return sources

@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28.1",
     "whyuseguide-api",
+    "whyuseguide-engine",
 ]
 
 [dependency-groups]
@@ -24,3 +25,4 @@ testpaths = ["tests"]
 
 [tool.uv.sources]
 whyuseguide-api = { workspace = true }
+whyuseguide-engine = { workspace = true }

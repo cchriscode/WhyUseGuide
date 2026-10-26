@@ -2,20 +2,24 @@
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
 
 from geoalchemy2 import Geography, WKBElement
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
     func,
     text,
@@ -136,3 +140,89 @@ class StopLine(TimestampedTable):
 
     stop_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stops.id", ondelete="CASCADE"))
     line_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("lines.id", ondelete="CASCADE"))
+
+
+class PlaceStatus(enum.StrEnum):
+    active = "active"
+    closed = "closed"
+    hidden = "hidden"  # 검수 전 후보 또는 숨김
+
+
+class TagSource(enum.StrEnum):
+    llm = "llm"
+    editor = "editor"
+    user = "user"
+
+
+class Place(TimestampedTable):
+    """장소 (PRD §6). type은 PRD 유형 목록(신사·사찰, 박물관, 시장, …)의 한국어 값.
+
+    source·source_ref: 어디서 온 후보인지(예: wikidata + Q-ID). verified_at이 있으면 편집자가 검수한 것이고,
+    출처 데이터를 다시 받아도 덮어쓰지 않는다.
+    """
+
+    __tablename__ = "places"
+    __table_args__ = (
+        UniqueConstraint("source", "source_ref"),
+        Index("ix_places_location", "location", postgresql_using="gist"),
+    )
+
+    city_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cities.id"))
+    name_ko: Mapped[str | None] = mapped_column(Text)
+    name_local: Mapped[str] = mapped_column(Text)
+    name_en: Mapped[str | None] = mapped_column(Text)
+    type: Mapped[str] = mapped_column(Text)
+    indoor: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    popularity: Mapped[int] = mapped_column(SmallInteger, server_default="3")  # 1 로컬 ~ 5 유명
+    rating: Mapped[Decimal | None] = mapped_column(Numeric(2, 1))
+    review_count: Mapped[int] = mapped_column(Integer, server_default="0")
+    default_stay_min: Mapped[int] = mapped_column(Integer, server_default="60")
+    cost_per_person: Mapped[int] = mapped_column(Integer, server_default="0")
+    currency: Mapped[str] = mapped_column(String(3))
+    location: Mapped[WKBElement] = mapped_column(
+        Geography(geometry_type="POINT", srid=4326, spatial_index=False)
+    )
+    nearest_stop_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("stops.id", ondelete="SET NULL"))
+    bookable: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    affiliate_url: Mapped[str | None] = mapped_column(Text)
+    tip_ko: Mapped[str | None] = mapped_column(Text)
+    parking_fee: Mapped[int | None] = mapped_column(Integer)
+    website: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[PlaceStatus] = mapped_column(
+        Enum(PlaceStatus, name="place_status"), server_default="hidden"
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    source: Mapped[str] = mapped_column(Text)
+    source_ref: Mapped[str] = mapped_column(Text)
+
+
+class PlaceHours(TimestampedTable):
+    """요일별 영업시간. 휴무 요일은 행이 없다. weekday 0 = 월요일."""
+
+    __tablename__ = "place_hours"
+    __table_args__ = (UniqueConstraint("place_id", "weekday", "open_time"),)
+
+    place_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"))
+    weekday: Mapped[int] = mapped_column(SmallInteger)
+    open_time: Mapped[time] = mapped_column(Time)
+    close_time: Mapped[time] = mapped_column(Time)
+    last_entry_time: Mapped[time | None] = mapped_column(Time)
+
+
+class PlaceClosure(TimestampedTable):
+    __tablename__ = "place_closures"
+    __table_args__ = (UniqueConstraint("place_id", "date"),)
+
+    place_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"))
+    date: Mapped[date] = mapped_column(Date)
+    reason: Mapped[str | None] = mapped_column(Text)
+
+
+class PlaceTag(TimestampedTable):
+    __tablename__ = "place_tags"
+    __table_args__ = (UniqueConstraint("place_id", "tag", "source"),)
+
+    place_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"))
+    tag: Mapped[str] = mapped_column(Text)
+    weight: Mapped[Decimal] = mapped_column(Numeric(3, 2))
+    source: Mapped[TagSource] = mapped_column(Enum(TagSource, name="tag_source"))

@@ -424,7 +424,7 @@ PostgreSQL + PostGIS. 모든 테이블에 `id`(UUID), `created_at`, `updated_at`
 | 테이블 | 주요 컬럼 | 메모 |
 | --- | --- | --- |
 | cities | code(tokyo), name\_ko, timezone, currency, fare\_table(jsonb), launched(bool), move\_cap\_factor(numeric, 기본 1.0) | move\_cap\_factor: 도시 이동 특성 보정 (아래) |
-| places | city\_id, name\_ko, name\_local, type(enum), indoor(bool), popularity(1\~5), rating(numeric), review\_count, default\_stay\_min, cost\_per\_person, currency, location, nearest\_stop\_id, bookable(bool), affiliate\_url, tip\_ko, parking\_fee(nullable), status(active/closed/hidden), verified\_at | type: 신사·사찰, 박물관, 시장, 골목 상점가, 전망, 바 골목, 체험, 정원, 야경, 맛집, 공원, 카페 거리, 서점, 쇼핑, 휴게소, 숙박 거점(자동차 여행 숙소 위치 후보, 13.4) |
+| places | city\_id, name\_ko, name\_local, name\_en, type(enum), indoor(bool), popularity(1\~5), rating(numeric), review\_count, default\_stay\_min, cost\_per\_person, currency, location, nearest\_stop\_id, bookable(bool), affiliate\_url, tip\_ko, parking\_fee(nullable), website, status(active/closed/hidden), verified\_at, source, source\_ref | type: 신사·사찰, 박물관, 시장, 골목 상점가, 전망, 바 골목, 체험, 정원, 야경, 맛집, 공원, 카페 거리, 서점, 쇼핑, 휴게소, 숙박 거점(자동차 여행 숙소 위치 후보, 13.4) |
 | areas | city\_id, name\_ko, boundary(geography(Polygon)) | 지역 한정용 동네 (편집팀 정의, 도쿄 MVP 8\~10곳) |
 | place\_hours | place\_id, weekday(0\~6), open\_time, close\_time, last\_entry\_time | 휴무일은 행 없음, 특별 휴무는 place\_closures |
 | place\_closures | place\_id, date, reason |  |
