@@ -7,6 +7,7 @@ import pytest
 from whyuseguide_pipelines.approx import (
     ApproxLine,
     Headway,
+    Service,
     Trip,
     build_feed,
     build_trips,
@@ -37,9 +38,8 @@ def make_line(n: int, loop: bool, every: int, total: float = 60) -> ApproxLine:
         name_en="Test Line",
         color="#123456",
         loop=loop,
-        total_minutes=total,
         stations=[(f"駅{i}", f"Eki{i}") for i in range(n)],
-        headways=[Headway(9 * 60, 12 * 60, every)],
+        services=[Service("all", "", tuple(range(n)), total, [Headway(9 * 60, 12 * 60, every)])],
     )
 
 
@@ -80,9 +80,9 @@ def test_loop_trains_are_evenly_spaced(every: int) -> None:
     n = 10
     line = make_line(n, loop=True, every=every)
     ids = [f"s{i}" for i in range(n)]
-    trips = build_trips(line, ids, segment_minutes(ring(n), 60, loop=True))
+    trips = build_trips(line, ids, ring(n))
     for stop in ("s0", "s3", "s5", "s8"):
-        times = [t for t in arrivals_at(trips, stop, "t:outer") if 10 * 60 <= t <= 11 * 60]
+        times = [t for t in arrivals_at(trips, stop, "t:all:outer") if 10 * 60 <= t <= 11 * 60]
         gaps = {round(b - a, 3) for a, b in zip(times, times[1:], strict=False)}
         assert gaps == {every}, (stop, gaps)
 
@@ -92,7 +92,7 @@ def test_loop_half_loop_trips_need_no_transfer() -> None:
     n = 8
     line = make_line(n, loop=True, every=5)
     ids = [f"s{i}" for i in range(n)]
-    trips = build_trips(line, ids, segment_minutes(ring(n), 60, loop=True))
+    trips = build_trips(line, ids, ring(n))
     for direction in ("outer", "inner"):
         sequences = [[sid for sid, _ in t.stops] for t in trips if f":{direction}" in t.trip_id]
         step = 1 if direction == "outer" else -1
@@ -105,7 +105,7 @@ def test_loop_half_loop_trips_need_no_transfer() -> None:
 def test_linear_line_runs_both_ways() -> None:
     line = make_line(4, loop=False, every=10, total=12)
     ids = ["s0", "s1", "s2", "s3"]
-    trips = build_trips(line, ids, segment_minutes(ring(8)[:4], 12, loop=False))
+    trips = build_trips(line, ids, ring(8)[:4])
     down = [t for t in trips if ":down:" in t.trip_id]
     up = [t for t in trips if ":up:" in t.trip_id]
     assert len(down) == len(up) == 18  # 09:00~12:00, 10분 간격
@@ -127,3 +127,105 @@ def test_build_feed_is_valid_gtfs(tmp_path: Path) -> None:
     assert net.lines[0].color_hex == "#123456"
     assert {s.name_en for s in net.stops} == {f"Eki{i}" for i in range(n)}
     assert len(net.stop_lines) == n
+
+
+def test_express_and_local_services(tmp_path: Path) -> None:
+    """급행은 일부 역만 서고, 정차역 사이 시간은 노선 거리 비율로 나뉜다."""
+    toml = tmp_path / "lines.toml"
+    toml.write_text(
+        """
+[[line]]
+id = "x"
+operator = "テスト鉄道"
+operator_en = "Test Rail"
+name_local = "テスト線"
+name_en = "Test Line"
+color = "#000000"
+loop = false
+stations = [["A", "A"], ["B", "B"], ["C", "C"], ["D", "D"]]
+
+[[line.services]]
+id = "express"
+name = "急行"
+stops = ["A", "D"]
+total_minutes = 10
+headways = [["09:00", "10:00", 20]]
+
+[[line.services]]
+id = "local"
+name = "普通"
+total_minutes = 15
+headways = [["09:00", "10:00", 20]]
+offset_min = 10
+""",
+        encoding="utf-8",
+    )
+    line = load_lines(toml)[0]
+    trips = build_trips(
+        line, ["a", "b", "c", "d"], [(139.70, 35.70), (139.71, 35.70), (139.72, 35.70), (139.73, 35.70)]
+    )
+    express = [t for t in trips if ":express:down:" in t.trip_id]
+    local = [t for t in trips if ":local:down:" in t.trip_id]
+    assert [sid for sid, _ in express[0].stops] == ["a", "d"]
+    assert express[0].service_name == "急行"
+    assert express[0].stops[-1][1] - express[0].stops[0][1] == pytest.approx(10)
+    assert [sid for sid, _ in local[0].stops] == ["a", "b", "c", "d"]
+    assert local[0].stops[0][1] == 9 * 60 + 10  # offset
+    assert local[0].stops[1][1] - local[0].stops[0][1] == pytest.approx(5)  # 같은 간격 역 → 15분의 1/3
+    assert len(express) == len(local) == 3
+
+
+def test_service_stops_must_be_on_line(tmp_path: Path) -> None:
+    toml = tmp_path / "lines.toml"
+    toml.write_text(
+        """
+[[line]]
+id = "x"
+operator = "o"
+operator_en = "O"
+name_local = "l"
+name_en = "L"
+color = "#000000"
+loop = false
+stations = [["A", "A"], ["B", "B"]]
+
+[[line.services]]
+id = "s"
+stops = ["A", "Z"]
+total_minutes = 5
+headways = [["09:00", "10:00", 20]]
+""",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="not on line"):
+        load_lines(toml)
+
+
+def test_explicit_stop_times(tmp_path: Path) -> None:
+    toml = tmp_path / "lines.toml"
+    toml.write_text(
+        """
+[[line]]
+id = "sky"
+operator = "o"
+operator_en = "O"
+name_local = "l"
+name_en = "L"
+color = "#000000"
+loop = false
+stations = [["A", "A"], ["B", "B"], ["C", "C"]]
+
+[[line.services]]
+id = "s"
+times = [0, 5, 41]
+headways = [["09:00", "10:00", 20]]
+""",
+        encoding="utf-8",
+    )
+    line = load_lines(toml)[0]
+    assert line.services[0].total_minutes == 41
+    trips = build_trips(line, ["a", "b", "c"], [(139.70, 35.70), (139.80, 35.70), (139.81, 35.70)])
+    down = next(t for t in trips if ":down:" in t.trip_id)
+    up = next(t for t in trips if ":up:" in t.trip_id)
+    assert [m - down.stops[0][1] for _, m in down.stops] == pytest.approx([0, 5, 41])
+    assert [m - up.stops[0][1] for _, m in up.stops] == pytest.approx([0, 36, 41])

@@ -41,3 +41,93 @@ facts = [
   "첫차 오사키 외선순환 04:27, 막차 0시대(2021 앞당김): https://www.watch.impress.co.jp/docs/news/1284319.html (2026-10-26 확인)",
   "추정: 04:30~07:00 6분, 16:30~20:00 4분, 20:00~23:00 5분, 23:00~24:30 8분",
 ]
+
+# --- 하네다 공항: 게이큐 (시나가와 ↔ 하네다공항). 각역정차는 관광 동선에 거의 쓰이지 않아 넣지 않았다.
+[[line]]
+id = "keikyu-airport"
+operator = "京浜急行電鉄"
+operator_en = "Keikyu"
+name_local = "京急線"
+name_en = "Keikyu Line"
+color = "#E60012"
+loop = false
+stations = [
+  ["品川", "Shinagawa"], ["京急蒲田", "Keikyu-kamata"],
+  ["羽田空港第3ターミナル", "Haneda Airport Terminal 3"], ["羽田空港第1・第2ターミナル", "Haneda Airport Terminal 1 2"],
+]
+facts = [
+  "에어포트 쾌특 시나가와 → 제3터미널 11분, 제1·제2터미널까지 약 15분, 20분 간격: https://travelist.jp/airport_HND/guide/posts/p1626 , https://trafficnews.jp/post/103248 (2026-10-26 확인)",
+  "추정: 게이큐카마타 정차 쾌특 17분·20분 간격(에어포트 쾌특과 10분 엇갈림), 운행 05:30~23:30, 제3→제1·제2터미널 3분, 노선 색",
+]
+
+[[line.services]]
+id = "airport-express"
+name = "エアポート快特"
+stops = ["品川", "羽田空港第3ターミナル", "羽田空港第1・第2ターミナル"]
+times = [0, 11, 14]
+headways = [["05:30", "23:30", 20]]
+
+[[line.services]]
+id = "rapid"
+name = "快特"
+times = [0, 9, 14, 17]
+headways = [["05:30", "23:30", 20]]
+offset_min = 10
+
+# --- 하네다 공항: 도쿄 모노레일 (하마마쓰초 ↔ 하네다공항)
+[[line]]
+id = "tokyo-monorail"
+operator = "東京モノレール"
+operator_en = "Tokyo Monorail"
+name_local = "東京モノレール羽田空港線"
+name_en = "Tokyo Monorail Haneda Airport Line"
+color = "#0071BC"
+loop = false
+stations = [
+  ["モノレール浜松町", "Monorail Hamamatsucho"], ["天王洲アイル", "Tennozu Isle"], ["大井競馬場前", "Oi-keibajo-mae"],
+  ["流通センター", "Ryutsu Center"], ["昭和島", "Showajima"], ["整備場", "Seibijo"], ["天空橋", "Tenkubashi"],
+  ["羽田空港第3ターミナル", "Haneda Airport Terminal 3"], ["新整備場", "Shin-seibijo"],
+  ["羽田空港第1ターミナル", "Haneda Airport Terminal 1"], ["羽田空港第2ターミナル", "Haneda Airport Terminal 2"],
+]
+facts = [
+  "공항쾌속 하마마쓰초 → 제2터미널 약 18분, 낮 12분 간격, 구간쾌속도 12분 간격: https://trafficnews.jp/post/103248/2 (2026-10-26 확인)",
+  "공항쾌속은 하마마쓰초에서 제3터미널까지 무정차, 이후 제1·제2터미널만 정차: 위와 같음",
+  "추정: 구간쾌속·각역정차를 '각역정차 24분, 12분 간격(공항쾌속과 6분 엇갈림)'으로 합침, 운행 05:30~23:30, 노선 색",
+]
+
+[[line.services]]
+id = "airport-rapid"
+name = "空港快速"
+stops = ["モノレール浜松町", "羽田空港第3ターミナル", "羽田空港第1ターミナル", "羽田空港第2ターミナル"]
+total_minutes = 18
+headways = [["05:30", "23:30", 12]]
+
+[[line.services]]
+id = "local"
+name = "普通"
+total_minutes = 24
+headways = [["05:30", "23:30", 12]]
+offset_min = 6
+
+# --- 나리타 공항: 게이세이 스카이라이너 (게이세이우에노 ↔ 나리타공항). 전석 지정석, 특급권 필요.
+[[line]]
+id = "keisei-skyliner"
+operator = "京成電鉄"
+operator_en = "Keisei"
+name_local = "京成スカイライナー"
+name_en = "Keisei Skyliner"
+color = "#1F2F6E"
+loop = false
+stations = [
+  ["京成上野", "Keisei-ueno"], ["日暮里", "Nippori"], ["空港第2ビル", "Airport Terminal 2"], ["成田空港", "Narita Airport"],
+]
+facts = [
+  "닛포리 → 공항 제2빌딩 최단 36분, 게이세이우에노 → 공항 제2빌딩 최단 41분, 거의 종일 20분 간격, 우에노 첫차 05:40: https://travelist.jp/airport_NRT/guide/posts/p516 , https://trafficnews.jp/post/89222 (2026-10-26 확인)",
+  "추정: 공항 제2빌딩 → 나리타공항(제1터미널) 3분, 막차 22:00(검색된 막차 정보가 2019년 것이라 쓰지 않음), 노선 색",
+]
+
+[[line.services]]
+id = "skyliner"
+name = "スカイライナー"
+times = [0, 5, 41, 44]
+headways = [["05:40", "22:00", 20]]

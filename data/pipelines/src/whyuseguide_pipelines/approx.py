@@ -28,6 +28,19 @@ class Headway:
 
 
 @dataclass(frozen=True)
+class Service:
+    """열차 종별(예: エアポート快特, 普通). stops는 노선 역 목록의 인덱스."""
+
+    id: str
+    name: str
+    stops: tuple[int, ...]
+    total_minutes: float  # 첫 정차역 → 마지막 정차역
+    headways: list[Headway]
+    offset_min: int = 0  # 같은 노선의 다른 종별과 엇갈리게 출발을 미룬다
+    times: tuple[float, ...] | None = None  # 정차역별 누적 분(출처가 있을 때). 없으면 거리 비율로 나눈다
+
+
+@dataclass(frozen=True)
 class ApproxLine:
     id: str
     operator: str
@@ -36,9 +49,8 @@ class ApproxLine:
     name_en: str
     color: str
     loop: bool
-    total_minutes: float
-    stations: list[tuple[str, str]]  # (현지어 이름, 영어 이름)
-    headways: list[Headway]
+    stations: list[tuple[str, str]]  # (현지어 이름, 영어 이름), 노선 순서
+    services: list[Service]
 
 
 def _minutes(hhmm: str) -> int:
@@ -46,18 +58,59 @@ def _minutes(hhmm: str) -> int:
     return int(h) * 60 + int(m)
 
 
+def _headways(line_id: str, raw: list[list[str | int]]) -> list[Headway]:
+    headways = [Headway(_minutes(str(a)), _minutes(str(b)), int(n)) for a, b, n in raw]
+    for h in headways:
+        if not (h.start_min < h.end_min and h.every_min > 0):
+            raise ValueError(f"{line_id}: bad headway {h}")
+    return headways
+
+
 def load_lines(path: Path) -> list[ApproxLine]:
+    """approx_lines.toml을 읽는다.
+
+    종별이 하나뿐인 노선은 노선에 total_minutes·headways를 바로 적고, 여럿이면 [[line.services]]로 적는다.
+    """
     with path.open("rb") as f:
         raw = tomllib.load(f)["line"]
     lines = []
     for r in raw:
-        headways = [Headway(_minutes(a), _minutes(b), int(n)) for a, b, n in r["headways"]]
-        for h in headways:
-            if not (h.start_min < h.end_min and h.every_min > 0):
-                raise ValueError(f"{r['id']}: bad headway {h}")
         stations = [(ja, en) for ja, en in r["stations"]]
-        if len({ja for ja, _ in stations}) != len(stations):
+        names = [ja for ja, _ in stations]
+        if len(set(names)) != len(names):
             raise ValueError(f"{r['id']}: duplicate station")
+        specs = r.get("services") or [
+            {"id": "all", "name": "", "total_minutes": r["total_minutes"], "headways": r["headways"]}
+        ]
+        services = []
+        for spec in specs:
+            stop_names = spec.get("stops", names)
+            unknown = [n for n in stop_names if n not in names]
+            if unknown:
+                raise ValueError(f"{r['id']}/{spec['id']}: stops not on line: {unknown}")
+            stops = tuple(names.index(n) for n in stop_names)
+            if list(stops) != sorted(stops) or len(stops) < 2:
+                raise ValueError(f"{r['id']}/{spec['id']}: stops must follow line order")
+            times = tuple(float(t) for t in spec["times"]) if "times" in spec else None
+            if times is not None and (
+                len(times) != len(stops)
+                or times[0] != 0
+                or any(b <= a for a, b in zip(times[:-1], times[1:], strict=True))
+            ):
+                raise ValueError(f"{r['id']}/{spec['id']}: times must start at 0 and increase, one per stop")
+            services.append(
+                Service(
+                    id=spec["id"],
+                    name=spec.get("name", ""),
+                    stops=stops,
+                    total_minutes=times[-1] if times else float(spec["total_minutes"]),
+                    headways=_headways(r["id"], spec["headways"]),
+                    offset_min=int(spec.get("offset_min", 0)),
+                    times=times,
+                )
+            )
+        if r["loop"] and (len(services) != 1 or len(services[0].stops) != len(stations)):
+            raise ValueError(f"{r['id']}: loop lines support one all-stop service")
         lines.append(
             ApproxLine(
                 id=r["id"],
@@ -67,9 +120,8 @@ def load_lines(path: Path) -> list[ApproxLine]:
                 name_en=r["name_en"],
                 color=r["color"],
                 loop=r["loop"],
-                total_minutes=float(r["total_minutes"]),
                 stations=stations,
-                headways=headways,
+                services=services,
             )
         )
     return lines
@@ -151,23 +203,28 @@ def _hms(minutes: float) -> str:
 class Trip:
     trip_id: str
     route_id: str
+    service_name: str
     headsign: str
-    stops: list[tuple[str, float]]  # (stop_id, 출발 기준 분)
+    stops: list[tuple[str, float]]  # (stop_id, 자정 기준 분)
 
 
-def build_trips(line: ApproxLine, stop_ids: list[str], seg: list[float]) -> list[Trip]:
+def build_trips(line: ApproxLine, stop_ids: list[str], points: list[tuple[float, float]]) -> list[Trip]:
     trips: list[Trip] = []
     n = len(stop_ids)
 
-    def run(order: list[int], segs: list[float], start: float, direction: str, k: int, headsign: str) -> None:
+    def run(
+        svc: Service, order: list[int], segs: list[float], start: float, trip_id: str, headsign: str
+    ) -> None:
         t = float(start)
         stops = [(stop_ids[order[0]], t)]
         for idx, m in zip(order[1:], segs, strict=True):
             t += m
             stops.append((stop_ids[idx], t))
-        trips.append(Trip(f"{line.id}:{direction}:{k}", line.id, headsign, stops))
+        trips.append(Trip(trip_id, line.id, svc.name, headsign, stops))
 
     if line.loop:
+        svc = line.services[0]
+        seg = segment_minutes(points, svc.total_minutes, loop=True)
         # 외선(정방향)·내선(역방향) 각각, 출발점이 반대편인 두 패턴을 엇갈려 돌린다.
         half = n // 2
         directions = {
@@ -175,13 +232,12 @@ def build_trips(line: ApproxLine, stop_ids: list[str], seg: list[float]) -> list
             "inner": (list(range(n - 1, -1, -1)), [seg[(i - 1) % n] for i in range(n - 1, -1, -1)]),
         }
         for direction, (order, segs) in directions.items():
-            k = 0
-            for dep in departures(line.headways, every_factor=2):
-                h = headway_at(line.headways, dep)
+            for k, dep in enumerate(departures(svc.headways, every_factor=2)):
+                h = headway_at(svc.headways, dep)
                 # 한 바퀴 시간이 2h의 배수여야 두 패턴 열차가 모든 역에서 h 간격으로 지나간다.
                 # 실제 운영도 이렇게 맞추므로 시간대별 배차 간격에 맞춰 한 바퀴 시간을 늘리거나 줄인다.
-                loop_minutes = 2 * h * max(1, round(line.total_minutes / (2 * h)))
-                scaled = [m * loop_minutes / line.total_minutes for m in segs]
+                loop_minutes = 2 * h * max(1, round(svc.total_minutes / (2 * h)))
+                scaled = [m * loop_minutes / svc.total_minutes for m in segs]
                 # 패턴 b는 반대편(half)에서 출발해 a의 출발역을 a 열차 사이 정중앙(h 뒤)에 지나간다.
                 b_dep = dep + h - sum(scaled[half:])
                 for pattern, start_pos, start in (("a", 0, float(dep)), ("b", half, b_dep)):
@@ -189,17 +245,35 @@ def build_trips(line: ApproxLine, stop_ids: list[str], seg: list[float]) -> list
                         continue
                     o = order[start_pos:] + order[:start_pos]
                     s = scaled[start_pos:] + scaled[:start_pos]
+                    # 한 바퀴 돌아 출발역으로 돌아온다(n개 구간).
                     run(
-                        o + o[:1], s, start, f"{direction}{pattern}", k, line.name_local
-                    )  # 한 바퀴 돌아 출발역으로
-                k += 1
-    else:
-        forward = list(range(n))
-        backward = forward[::-1]
-        for direction, order, segs in (("down", forward, seg), ("up", backward, seg[::-1])):
+                        svc,
+                        o + o[:1],
+                        s,
+                        start,
+                        f"{line.id}:{svc.id}:{direction}{pattern}:{k}",
+                        line.name_local,
+                    )
+        return trips
+
+    # 노선을 따라 쌓은 거리. 종별의 정차역 사이 시간은 이 거리 비율로 나눈다.
+    cum = [0.0]
+    for a, b in zip(points[:-1], points[1:], strict=True):
+        cum.append(cum[-1] + _km(a, b))
+    for svc in line.services:
+        stops = list(svc.stops)
+        if svc.times:
+            seg = [b - a for a, b in zip(svc.times[:-1], svc.times[1:], strict=True)]
+        else:
+            span = cum[stops[-1]] - cum[stops[0]]
+            seg = [
+                svc.total_minutes * (cum[b] - cum[a]) / span
+                for a, b in zip(stops[:-1], stops[1:], strict=True)
+            ]
+        for direction, order, segs in (("down", stops, seg), ("up", stops[::-1], seg[::-1])):
             headsign = line.stations[order[-1]][0]
-            for k, dep in enumerate(departures(line.headways)):
-                run(order, segs, dep, direction, k, headsign)
+            for k, dep in enumerate(departures(svc.headways)):
+                run(svc, order, segs, dep + svc.offset_min, f"{line.id}:{svc.id}:{direction}:{k}", headsign)
     return trips
 
 
@@ -266,7 +340,7 @@ def build_feed(
                 "record_id": line.id,
             }
         )
-        all_trips += build_trips(line, stop_ids, segment_minutes(points, line.total_minutes, line.loop))
+        all_trips += build_trips(line, stop_ids, points)
 
     files = {
         "agency.txt": _csv(
@@ -314,10 +388,11 @@ def build_feed(
                     "service_id": "all",
                     "trip_id": t.trip_id,
                     "trip_headsign": t.headsign,
+                    "trip_short_name": t.service_name,
                 }
                 for t in all_trips
             ],
-            ["route_id", "service_id", "trip_id", "trip_headsign"],
+            ["route_id", "service_id", "trip_id", "trip_headsign", "trip_short_name"],
         ),
         "stop_times.txt": _csv(
             [
