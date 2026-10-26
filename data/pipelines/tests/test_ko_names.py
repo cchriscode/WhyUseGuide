@@ -1,6 +1,6 @@
 import pytest
 
-from whyuseguide_pipelines.ko_names import line_name_ko, romaji_to_hangul
+from whyuseguide_pipelines.ko_names import korean_variants, line_name_ko, romaji_to_hangul
 
 
 @pytest.mark.parametrize(
@@ -47,3 +47,23 @@ def test_line_name() -> None:
     assert line_name_ko("Asakusa Line") == "아사쿠사선"
     assert line_name_ko("Oedo Line") == "오에도선"
     assert line_name_ko("Nippori-Toneri Liner") is None
+
+
+@pytest.mark.parametrize(
+    ("romaji", "variants"),
+    [
+        ("Asakusa", ["아사쿠사"]),  # 갈리는 곳이 없으면 별칭도 없다
+        ("Kuramae", ["구라마에", "쿠라마에"]),
+        ("Tsukishima", ["쓰키시마", "츠키시마"]),
+        ("Kiyosumi-shirakawa", ["기요스미시라카와", "키요스미시라카와"]),
+        ("Tochomae", ["도초마에", "토초마에"]),
+        ("Kokuritsu-kyogijo", ["고쿠리쓰쿄기조", "고쿠리츠쿄기조", "코쿠리쓰쿄기조", "코쿠리츠쿄기조"]),
+        ("Gotanda", ["고탄다"]),  # が행은 첫머리도 그대로
+    ],
+)
+def test_korean_variants(romaji: str, variants: list[str]) -> None:
+    assert korean_variants(romaji) == variants
+
+
+def test_line_variants() -> None:
+    assert korean_variants("Tsukuba Line", line_name_ko) == ["쓰쿠바선", "츠쿠바선"]

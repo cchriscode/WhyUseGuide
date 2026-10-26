@@ -5,9 +5,13 @@ GTFS에 한국어 이름이 없을 때 쓰는 기계 변환이다. 결과는 nam
 
 표기법 요점: 장음은 적지 않는다, 촉음(っ)은 ㅅ받침, ん은 ㄴ받침, つ는 '쓰',
 か·た행과 ちゃ류는 첫머리에서 예사소리(가, 다, 자) 중간·끝에서 거센소리(카, 타, 차).
+
+표시 이름은 표기법을 따르고, 여행 글에서 흔한 관용 표기(つ = '츠', 첫머리 거센소리)는
+검색 별칭으로 둔다(korean_variants).
 """
 
 import re
+from collections.abc import Callable
 
 # 로마자 → (첫머리, 중간·끝)
 _SYLLABLES: dict[str, tuple[str, str]] = {}
@@ -45,7 +49,7 @@ def _add_final(syllables: list[str], final: int) -> None:
     syllables[-1] = chr(0xAC00 + code + final)
 
 
-def _segment(seg: str, syllables: list[str]) -> None:
+def _segment(seg: str, syllables: list[str], aspirate_initial: bool, tsu: str) -> None:
     i = 0
     while i < len(seg):
         rest = seg[i:]
@@ -65,15 +69,21 @@ def _segment(seg: str, syllables: list[str]) -> None:
         for romaji in _BY_LENGTH:
             if rest.startswith(romaji):
                 first, medial = _SYLLABLES[romaji]
-                syllables.append(first if not syllables else medial)
+                if romaji == "tsu":
+                    first = medial = tsu
+                is_initial = not syllables
+                syllables.append(first if is_initial and not aspirate_initial else medial)
                 i += len(romaji)
                 break
         else:
             raise ValueError(f"cannot parse {rest!r}")
 
 
-def romaji_to_hangul(name: str) -> str | None:
-    """'Higashi-nihombashi' → '히가시니혼바시'. 변환할 수 없으면 None."""
+def romaji_to_hangul(name: str, aspirate_initial: bool = False, tsu: str = "쓰") -> str | None:
+    """'Higashi-nihombashi' → '히가시니혼바시'. 변환할 수 없으면 None.
+
+    aspirate_initial=True면 첫머리도 거센소리(쿠라마에), tsu="츠"면 つ를 '츠'로 적는다(관용 표기).
+    """
     words = []
     for word in name.strip().split():
         syllables: list[str] = []
@@ -81,17 +91,27 @@ def romaji_to_hangul(name: str) -> str | None:
             for seg in re.split(r"[-']", word.lower()):
                 if not seg.isascii() or not seg.isalpha():
                     return None
-                _segment(seg, syllables)
+                _segment(seg, syllables, aspirate_initial, tsu)
         except ValueError:
             return None
         words.append("".join(syllables))
     return " ".join(words) or None
 
 
-def line_name_ko(name_en: str) -> str | None:
+def line_name_ko(name_en: str, aspirate_initial: bool = False, tsu: str = "쓰") -> str | None:
     """'Asakusa Line' → '아사쿠사선'. 'X Line' 꼴이 아니면 None (names_ko.toml로 처리)."""
     match = re.fullmatch(r"(.+) Line", name_en.strip())
     if not match:
         return None
-    head = romaji_to_hangul(match.group(1))
+    head = romaji_to_hangul(match.group(1), aspirate_initial, tsu)
     return f"{head}선" if head else None
+
+
+def korean_variants(name_en: str, convert: Callable[..., str | None] = romaji_to_hangul) -> list[str]:
+    """표기법 이름을 맨 앞에, 관용 표기(つ = 츠, 첫머리 거센소리와 그 조합)를 뒤에 둔 중복 없는 목록."""
+    out: list[str] = []
+    for aspirate_initial, tsu in ((False, "쓰"), (False, "츠"), (True, "쓰"), (True, "츠")):
+        name = convert(name_en, aspirate_initial=aspirate_initial, tsu=tsu)
+        if name and name not in out:
+            out.append(name)
+    return out

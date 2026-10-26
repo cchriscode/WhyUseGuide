@@ -429,9 +429,9 @@ PostgreSQL + PostGIS. 모든 테이블에 `id`(UUID), `created_at`, `updated_at`
 | place\_hours | place\_id, weekday(0\~6), open\_time, close\_time, last\_entry\_time | 휴무일은 행 없음, 특별 휴무는 place\_closures |
 | place\_closures | place\_id, date, reason |  |
 | place\_tags | place\_id, tag, weight(0\~1), source(llm/editor/user) | 취향 매칭용 |
-| stops | city\_id, source\_id, gtfs\_stop\_id, code, name\_ko, name\_ko\_source, name\_local, name\_en, location, parent\_station\_id | GTFS에서 적재. source\_id = `data/pipelines/sources.toml`의 출처 id, code = 역 번호(A-18 등). name\_ko는 GTFS에 없어 로마자 → 한글 기계 변환(국립국어원 일본어 표기법) 또는 편집 목록으로 채움. name\_ko\_source = official/editor/machine |
+| stops | city\_id, source\_id, gtfs\_stop\_id, code, name\_ko, name\_ko\_source, name\_ko\_aliases, name\_local, name\_en, location, parent\_station\_id | GTFS에서 적재. source\_id = `data/pipelines/sources.toml`의 출처 id, code = 역 번호(A-18 등). name\_ko는 GTFS에 없어 로마자 → 한글 기계 변환(국립국어원 일본어 표기법) 또는 편집 목록으로 채움. name\_ko\_source = official/editor/machine. name\_ko\_aliases = 검색 별칭(관용 표기: つ = 츠, 첫머리 거센소리) |
 | stop\_lines | stop\_id, line\_id |  |
-| lines | city\_id, source\_id, gtfs\_route\_id, name\_ko, name\_ko\_source, name\_local, name\_en, color\_hex, operator, estimated | 노선 색은 GTFS route\_color. estimated = 근사 노선("예상", `docs/data-licenses.md`) |
+| lines | city\_id, source\_id, gtfs\_route\_id, name\_ko, name\_ko\_source, name\_ko\_aliases, name\_local, name\_en, color\_hex, operator, estimated | 노선 색은 GTFS route\_color. estimated = 근사 노선("예상", `docs/data-licenses.md`) |
 | stop\_exits | stop\_id, name, location, has\_elevator | 2단계, OSM·운영사 |
 | car\_positions | stop\_id, line\_id, direction, best\_cars(int\[\]), for\_exit | 탈 칸 위치, 수작업·제보 |
 | alt\_courses | city\_id, name\_ko, kind(rain/local/...), place\_ids(uuid\[\]) | 대체 코스 정의 |

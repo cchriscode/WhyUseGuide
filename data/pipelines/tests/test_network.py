@@ -165,6 +165,17 @@ def test_korean_names(conn: Connection) -> None:
     line_ko = conn.execute(select(Line.name_ko).where(Line.source_id == "test-ko")).scalar_one()
     assert line_ko == "아사쿠사선"
 
+    aliases = {
+        sid: list(a)
+        for sid, a in conn.execute(
+            select(Stop.gtfs_stop_id, Stop.name_ko_aliases).where(Stop.source_id == "test-ko")
+        )
+    }
+    assert aliases["101"] == []  # 아사쿠사는 표기가 갈리지 않는다
+    assert aliases["102"] == ["구라마에"]  # 편집 이름이 표시, 표기법 이름은 별칭
+
     # 편집 목록에서 빠지면 기계 변환으로 돌아간다
     apply_korean_names(conn, "test-ko", KoreanNames(lines={}, stops={}))
     assert names()["102"] == ("구라마에", NameSource.machine)
+    q = select(Stop.name_ko_aliases).where(Stop.source_id == "test-ko", Stop.gtfs_stop_id == "102")
+    assert list(conn.execute(q).scalar_one()) == ["쿠라마에"]

@@ -98,6 +98,8 @@ class Line(TimestampedTable):
     gtfs_route_id: Mapped[str] = mapped_column(Text)
     name_ko: Mapped[str | None] = mapped_column(Text)
     name_ko_source: Mapped[NameSource | None] = mapped_column(Enum(NameSource, name="name_source"))
+    # 검색 별칭: 관용 표기(츠키지, 쿠라마에 등). 표시는 name_ko(표기법)를 쓴다.
+    name_ko_aliases: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
     name_local: Mapped[str] = mapped_column(Text)
     name_en: Mapped[str | None] = mapped_column(Text)
     color_hex: Mapped[str | None] = mapped_column(String(7))
@@ -118,6 +120,8 @@ class Stop(TimestampedTable):
     code: Mapped[str | None] = mapped_column(Text)
     name_ko: Mapped[str | None] = mapped_column(Text)
     name_ko_source: Mapped[NameSource | None] = mapped_column(Enum(NameSource, name="name_source"))
+    # 검색 별칭: 관용 표기(츠키지, 쿠라마에 등). 표시는 name_ko(표기법)를 쓴다.
+    name_ko_aliases: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
     name_local: Mapped[str] = mapped_column(Text)
     name_en: Mapped[str | None] = mapped_column(Text)
     location: Mapped[WKBElement] = mapped_column(

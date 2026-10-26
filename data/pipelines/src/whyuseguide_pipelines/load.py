@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from whyuseguide_api.db.models import City, Line, NameSource, Stop, StopLine
 from whyuseguide_pipelines.gtfs import Network
-from whyuseguide_pipelines.ko_names import line_name_ko, romaji_to_hangul
+from whyuseguide_pipelines.ko_names import korean_variants, line_name_ko, romaji_to_hangul
 
 
 @dataclass
@@ -131,6 +131,7 @@ def apply_korean_names(conn: Connection, source_id: str, names: KoreanNames) -> 
     """name_ko를 채운다.
 
     공식 이름(official)은 그대로 두고, 편집 목록에 있으면 editor, 나머지는 기계 변환(machine)이다.
+    표기법 이름이 아닌 기계 변환 결과(관용 표기)는 검색 별칭(name_ko_aliases)에 넣는다.
     """
     result = NamingResult()
     targets = (
@@ -147,19 +148,26 @@ def apply_korean_names(conn: Connection, source_id: str, names: KoreanNames) -> 
             if current == NameSource.official:
                 result.official += 1
                 continue
+            variants = korean_variants(name_en, convert) if name_en else []
             name_ko: str | None
             source: NameSource | None
             if name_local in edited:
                 name_ko, source = edited[name_local], NameSource.editor
                 result.editor += 1
             else:
-                name_ko = convert(name_en) if name_en else None
+                name_ko = variants[0] if variants else None
                 source = NameSource.machine if name_ko else None
                 if name_ko:
                     result.machine += 1
                 else:
                     result.missing += 1
             conn.execute(
-                update(model).where(model.id == row_id).values(name_ko=name_ko, name_ko_source=source)
+                update(model)
+                .where(model.id == row_id)
+                .values(
+                    name_ko=name_ko,
+                    name_ko_source=source,
+                    name_ko_aliases=[v for v in variants if v != name_ko],
+                )
             )
     return result
