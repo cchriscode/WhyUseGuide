@@ -18,6 +18,9 @@ from pathlib import Path
 # N02 역 지오메트리를 찾을 범위: 도쿄권(1도 ≒ 90~110km)
 TOKYO_BBOX = (138.9, 35.0, 140.6, 36.3)  # 서, 남, 동, 북
 SAME_STATION_KM = 1.5
+# GTFS calendar: 평일(월~금), 휴일(토·일). 평일에 걸린 공휴일은 calendar_dates로 휴일 쪽에 옮긴다.
+SERVICE_DAYS = {"all": "1111111", "weekday": "1111100", "holiday": "0000011"}
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
 @dataclass(frozen=True)
@@ -38,6 +41,7 @@ class Service:
     headways: list[Headway]
     offset_min: int = 0  # 같은 노선의 다른 종별과 엇갈리게 출발을 미룬다
     times: tuple[float, ...] | None = None  # 정차역별 누적 분(출처가 있을 때). 없으면 거리 비율로 나눈다
+    days: str = "all"  # all, weekday(평일), holiday(토·일·공휴일)
 
 
 @dataclass(frozen=True)
@@ -107,8 +111,12 @@ def load_lines(path: Path) -> list[ApproxLine]:
                     headways=_headways(r["id"], spec["headways"]),
                     offset_min=int(spec.get("offset_min", 0)),
                     times=times,
+                    days=spec.get("days", "all"),
                 )
             )
+        for svc in services:
+            if svc.days not in SERVICE_DAYS:
+                raise ValueError(f"{r['id']}/{svc.id}: days must be one of {sorted(SERVICE_DAYS)}")
         if r["loop"] and (len(services) != 1 or len(services[0].stops) != len(stations)):
             raise ValueError(f"{r['id']}: loop lines support one all-stop service")
         lines.append(
@@ -204,6 +212,7 @@ class Trip:
     trip_id: str
     route_id: str
     service_name: str
+    service_days: str
     headsign: str
     stops: list[tuple[str, float]]  # (stop_id, 자정 기준 분)
 
@@ -220,7 +229,7 @@ def build_trips(line: ApproxLine, stop_ids: list[str], points: list[tuple[float,
         for idx, m in zip(order[1:], segs, strict=True):
             t += m
             stops.append((stop_ids[idx], t))
-        trips.append(Trip(trip_id, line.id, svc.name, headsign, stops))
+        trips.append(Trip(trip_id, line.id, svc.name, svc.days, headsign, stops))
 
     if line.loop:
         svc = line.services[0]
@@ -291,6 +300,7 @@ def build_feed(
     out: Path,
     valid_from: date,
     valid_to: date,
+    holidays: set[date] | None = None,
 ) -> dict[str, int]:
     """근사 GTFS zip을 쓴다. 같은 운영사의 같은 이름 역은 노선이 달라도 정류장 하나로 둔다."""
     agencies: dict[str, str] = {}
@@ -342,6 +352,8 @@ def build_feed(
         )
         all_trips += build_trips(line, stop_ids, points)
 
+    # 평일(월~금)에 걸린 공휴일만 예외로 둔다. 토·일 공휴일은 원래 휴일 운행이다.
+    weekday_holidays = {d for d in (holidays or set()) if valid_from <= d <= valid_to and d.weekday() < 5}
     files = {
         "agency.txt": _csv(
             [
@@ -360,32 +372,28 @@ def build_feed(
         "calendar.txt": _csv(
             [
                 {
-                    "service_id": "all",
-                    **dict.fromkeys(
-                        ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"], "1"
-                    ),
+                    "service_id": sid,
+                    **dict(zip(WEEKDAYS, pattern, strict=True)),
                     "start_date": valid_from.strftime("%Y%m%d"),
                     "end_date": valid_to.strftime("%Y%m%d"),
                 }
+                for sid, pattern in SERVICE_DAYS.items()
             ],
+            ["service_id", *WEEKDAYS, "start_date", "end_date"],
+        ),
+        "calendar_dates.txt": _csv(
             [
-                "service_id",
-                "monday",
-                "tuesday",
-                "wednesday",
-                "thursday",
-                "friday",
-                "saturday",
-                "sunday",
-                "start_date",
-                "end_date",
+                {"service_id": sid, "date": d.strftime("%Y%m%d"), "exception_type": kind}
+                for d in sorted(weekday_holidays)
+                for sid, kind in (("weekday", "2"), ("holiday", "1"))
             ],
+            ["service_id", "date", "exception_type"],
         ),
         "trips.txt": _csv(
             [
                 {
                     "route_id": t.route_id,
-                    "service_id": "all",
+                    "service_id": t.service_days,
                     "trip_id": t.trip_id,
                     "trip_headsign": t.headsign,
                     "trip_short_name": t.service_name,

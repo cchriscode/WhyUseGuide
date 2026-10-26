@@ -23,6 +23,15 @@ refresh = "yearly"
 otp = false
 
 [[source]]
+id = "cao-holidays"
+kind = "file"
+url = "https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv"
+license = "公共データ利用規約 第1.0版 (CC BY 4.0 호환)"
+attribution = "出典：内閣府ホームページ (https://www8.cao.go.jp/chosei/shukujitsu/gaiyou.html)"
+refresh = "yearly"
+otp = false
+
+[[source]]
 id = "approx-tokyo"
 kind = "gtfs"
 url = "local:approx_lines.toml"

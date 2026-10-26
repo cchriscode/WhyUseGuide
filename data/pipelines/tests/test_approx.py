@@ -1,4 +1,7 @@
+import csv
+import io
 import math
+import zipfile
 from datetime import date
 from pathlib import Path
 
@@ -16,6 +19,7 @@ from whyuseguide_pipelines.approx import (
     segment_minutes,
 )
 from whyuseguide_pipelines.gtfs import read_network, validate_feed
+from whyuseguide_pipelines.holidays import parse_holidays
 from whyuseguide_pipelines.sources import PIPELINES_DIR
 
 OP = "テスト鉄道"
@@ -229,3 +233,88 @@ headways = [["09:00", "10:00", 20]]
     up = next(t for t in trips if ":up:" in t.trip_id)
     assert [m - down.stops[0][1] for _, m in down.stops] == pytest.approx([0, 5, 41])
     assert [m - up.stops[0][1] for _, m in up.stops] == pytest.approx([0, 36, 41])
+
+
+def test_parse_holidays() -> None:
+    raw = "国民の祝日・休日月日,国民の祝日・休日名称\n2027/9/20,敬老の日\n2027/9/23,秋分の日\n".encode(
+        "cp932"
+    )
+    assert parse_holidays(raw) == {date(2027, 9, 20): "敬老の日", date(2027, 9, 23): "秋分の日"}
+
+
+def test_weekday_and_holiday_services(tmp_path: Path) -> None:
+    toml = tmp_path / "lines.toml"
+    toml.write_text(
+        """
+[[line]]
+id = "c"
+operator = "テスト鉄道"
+operator_en = "Test Rail"
+name_local = "テスト線"
+name_en = "Test Line"
+color = "#000000"
+loop = false
+stations = [["A", "A"], ["B", "B"], ["C", "C"]]
+
+[[line.services]]
+id = "rapid-weekday"
+total_minutes = 10
+headways = [["09:00", "10:00", 20]]
+days = "weekday"
+
+[[line.services]]
+id = "rapid-holiday"
+stops = ["A", "C"]
+total_minutes = 8
+headways = [["09:00", "10:00", 20]]
+days = "holiday"
+""",
+        encoding="utf-8",
+    )
+    line = load_lines(toml)[0]
+    index = {
+        (OP, n): [p] for n, p in zip("ABC", [(139.70, 35.70), (139.71, 35.70), (139.72, 35.70)], strict=True)
+    }
+    out = tmp_path / "f.zip"
+    # 2027-09-20(월) 경로의 날, 2027-09-25(토)는 원래 휴일이라 예외가 필요 없다
+    build_feed(
+        [line], index, out, date(2027, 9, 1), date(2027, 9, 30), {date(2027, 9, 20), date(2027, 9, 25)}
+    )
+    with zipfile.ZipFile(out) as zf:
+        trips = list(csv.DictReader(io.StringIO(zf.read("trips.txt").decode())))
+        exceptions = list(csv.DictReader(io.StringIO(zf.read("calendar_dates.txt").decode())))
+        calendar = {r["service_id"]: r for r in csv.DictReader(io.StringIO(zf.read("calendar.txt").decode()))}
+    assert {t["service_id"] for t in trips if "rapid-weekday" in t["trip_id"]} == {"weekday"}
+    assert {t["service_id"] for t in trips if "rapid-holiday" in t["trip_id"]} == {"holiday"}
+    assert calendar["weekday"]["saturday"] == "0" and calendar["holiday"]["sunday"] == "1"
+    assert sorted((e["service_id"], e["date"], e["exception_type"]) for e in exceptions) == [
+        ("holiday", "20270920", "1"),
+        ("weekday", "20270920", "2"),
+    ]
+    assert validate_feed(out, date(2027, 9, 1)).ok
+
+
+def test_unknown_days_rejected(tmp_path: Path) -> None:
+    toml = tmp_path / "lines.toml"
+    toml.write_text(
+        """
+[[line]]
+id = "c"
+operator = "o"
+operator_en = "O"
+name_local = "l"
+name_en = "L"
+color = "#000000"
+loop = false
+stations = [["A", "A"], ["B", "B"]]
+
+[[line.services]]
+id = "s"
+total_minutes = 5
+headways = [["09:00", "10:00", 20]]
+days = "sunday"
+""",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="days must be"):
+        load_lines(toml)

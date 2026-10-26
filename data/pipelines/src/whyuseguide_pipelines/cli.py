@@ -12,6 +12,7 @@ from whyuseguide_api.config import Settings
 from whyuseguide_pipelines.approx import build_feed, load_lines, station_index
 from whyuseguide_pipelines.fetch import fetch
 from whyuseguide_pipelines.gtfs import read_network, validate_feed
+from whyuseguide_pipelines.holidays import load_holidays
 from whyuseguide_pipelines.load import KoreanNames, apply_korean_names, load_network
 from whyuseguide_pipelines.sources import APPROX_LINES, KOREAN_NAMES, OTP_DIR, RAW_DIR, Source, load_sources
 
@@ -98,13 +99,19 @@ def cmd_load_db(sources: list[Source]) -> int:
 def cmd_build_approx(sources: list[Source]) -> int:
     """approx_lines.toml + 국토수치정보 N02 역 위치로 근사 GTFS를 만든다."""
     n02 = RAW_DIR / "mlit-n02-2025" / "N02-25_GML.zip"
-    if not n02.exists():
-        raise SystemExit("국토수치정보 N02가 없다: uv run wug-data fetch mlit-n02-2025")
+    holidays_csv = RAW_DIR / "cao-holidays" / "syukujitsu.csv"
+    missing = [p.name for p in (n02, holidays_csv) if not p.exists()]
+    if missing:
+        raise SystemExit(
+            f"원자료가 없다({', '.join(missing)}): uv run wug-data fetch mlit-n02-2025 cao-holidays"
+        )
+    holidays = set(load_holidays(holidays_csv))
     lines = load_lines(APPROX_LINES)
     today = date.today()
     for s in (s for s in sources if s.local):
         out = RAW_DIR / s.id / s.filename
-        counts = build_feed(lines, station_index(n02), out, today, today.replace(year=today.year + 1))
+        valid_to = min(today.replace(year=today.year + 1), max(holidays))  # 공휴일이 공표된 날까지만
+        counts = build_feed(lines, station_index(n02), out, today, valid_to, holidays)
         print(f"built {s.id}: lines={counts['lines']} stops={counts['stops']} trips={counts['trips']}")
     return 0
 
