@@ -1,0 +1,235 @@
+{
+ "name": "random-23-suggest",
+ "kind": "suggest",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "08:30",
+   "items": [
+    {
+     "placeId": "23-0"
+    },
+    {
+     "placeId": "23-1",
+     "stayMin": 90
+    }
+   ],
+   "places": {
+    "23-0": {
+     "id": "23-0",
+     "name": "장소23-0",
+     "type": "시장",
+     "lat": 35.67755,
+     "lon": 139.77031,
+     "defaultStayMin": 45,
+     "rating": 4.4,
+     "costPerPerson": 2000,
+     "indoor": false,
+     "lines": [
+      "O"
+     ]
+    },
+    "23-1": {
+     "id": "23-1",
+     "name": "장소23-1",
+     "type": "박물관",
+     "lat": 35.65128,
+     "lon": 139.69066,
+     "defaultStayMin": 75,
+     "rating": 4.6,
+     "costPerPerson": 0,
+     "indoor": true,
+     "lines": [
+      "A",
+      "G"
+     ],
+     "closed": true
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "cheap",
+   "delay": {
+    "gap": 1,
+    "minutes": 20
+   }
+  },
+  "mode": "replace",
+  "cur": -1,
+  "position": 1,
+  "candidates": [
+   {
+    "id": "23-c0",
+    "name": "장소23-c0",
+    "type": "카페 거리",
+    "lat": 35.71132,
+    "lon": 139.78311,
+    "defaultStayMin": 45,
+    "rating": 4.6,
+    "costPerPerson": 0,
+    "indoor": true,
+    "lines": [
+     "Y"
+    ],
+    "open": "10:00",
+    "close": "20:00"
+   },
+   {
+    "id": "23-c1",
+    "name": "장소23-c1",
+    "type": "맛집",
+    "lat": 35.67346,
+    "lon": 139.70789,
+    "defaultStayMin": 120,
+    "rating": 4.7,
+    "costPerPerson": 500,
+    "indoor": false,
+    "lines": [
+     "G",
+     "O"
+    ]
+   },
+   {
+    "id": "23-c2",
+    "name": "장소23-c2",
+    "type": "맛집",
+    "lat": 35.69128,
+    "lon": 139.71973,
+    "defaultStayMin": 90,
+    "rating": 5.0,
+    "costPerPerson": 0,
+    "indoor": true,
+    "lines": [
+     "A"
+    ]
+   },
+   {
+    "id": "23-c3",
+    "name": "장소23-c3",
+    "type": "공원",
+    "lat": 35.69802,
+    "lon": 139.71187,
+    "defaultStayMin": 45,
+    "rating": 4.7,
+    "costPerPerson": 0,
+    "indoor": false,
+    "lines": [
+     "O"
+    ],
+    "open": "11:00",
+    "close": "22:00"
+   }
+  ]
+ },
+ "expected": [
+  {
+   "placeId": "23-c3",
+   "name": "장소23-c3",
+   "position": 1,
+   "score": -64.2,
+   "detourMin": -16,
+   "arrive": "10:00",
+   "endAfter": "11:45",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "가는 길"
+   ],
+   "effect": "이동이 16분 줄어요 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
+   "placeId": "23-c2",
+   "name": "장소23-c2",
+   "position": 1,
+   "score": -58.0,
+   "detourMin": -8,
+   "arrive": "10:10",
+   "endAfter": "11:40",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "가는 길",
+    "실내"
+   ],
+   "effect": "이동이 8분 줄어요 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
+   "placeId": "23-c0",
+   "name": "장소23-c0",
+   "position": 1,
+   "score": -57.6,
+   "detourMin": -10,
+   "arrive": "10:05",
+   "endAfter": "10:50",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "가는 길",
+    "실내"
+   ],
+   "effect": "이동이 10분 줄어요 · 끝나는 시간 그대로",
+   "warning": null
+  }
+ ]
+}

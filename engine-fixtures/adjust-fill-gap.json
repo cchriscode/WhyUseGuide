@@ -1,0 +1,144 @@
+{
+ "name": "adjust-fill-gap",
+ "kind": "autoAdjust",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "A",
+     "fixedAt": "09:00"
+    },
+    {
+     "placeId": "B"
+    }
+   ],
+   "places": {
+    "A": {
+     "id": "A",
+     "name": "A",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 30
+    },
+    "B": {
+     "id": "B",
+     "name": "B",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60,
+     "open": "12:00"
+    }
+   },
+   "legs": [
+    {
+     "from": "A",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "B",
+     "to": "A",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0
+    }
+   ]
+  },
+  "cur": 0
+ },
+ "expected": {
+  "items": [
+   {
+    "placeId": "A",
+    "stayMin": null,
+    "fixedAt": "09:00"
+   },
+   {
+    "placeId": "B",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ],
+  "result": {
+   "rows": [
+    {
+     "kind": "stop",
+     "placeId": "A",
+     "name": "A",
+     "arrive": "09:00",
+     "wait": 0,
+     "start": "09:00",
+     "end": "09:30",
+     "stayMin": 30,
+     "issue": null,
+     "fixedAt": "09:00"
+    },
+    {
+     "kind": "leg",
+     "from": "A",
+     "to": "B",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0,
+     "estimated": false,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0
+    },
+    {
+     "kind": "stop",
+     "placeId": "B",
+     "name": "B",
+     "arrive": "09:40",
+     "wait": 140,
+     "start": "12:00",
+     "end": "13:00",
+     "stayMin": 60,
+     "issue": "open",
+     "fixedAt": null
+    }
+   ],
+   "totals": {
+    "moveMin": 10,
+    "farePerPerson": 180,
+    "spendPerPerson": 180,
+    "end": "13:00",
+    "issues": 1,
+    "overEnd": false
+   }
+  },
+  "applied": false,
+  "messages": [
+   "B 오픈까지 140분이 비어요"
+  ],
+  "dropSuggestion": null,
+  "fillGap": {
+   "position": 1,
+   "waitMin": 140
+  },
+  "undoItems": [
+   {
+    "placeId": "A",
+    "stayMin": null,
+    "fixedAt": "09:00"
+   },
+   {
+    "placeId": "B",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ]
+ }
+}

@@ -1,0 +1,247 @@
+{
+ "name": "random-40-autoAdjust",
+ "kind": "autoAdjust",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "08:30",
+   "items": [
+    {
+     "placeId": "40-0"
+    },
+    {
+     "placeId": "40-1"
+    },
+    {
+     "placeId": "40-2"
+    }
+   ],
+   "places": {
+    "40-0": {
+     "id": "40-0",
+     "name": "장소40-0",
+     "type": "시장",
+     "lat": 35.65545,
+     "lon": 139.79517,
+     "defaultStayMin": 75,
+     "rating": 3.5,
+     "costPerPerson": 0,
+     "indoor": false,
+     "lines": [
+      "O"
+     ],
+     "open": "11:00",
+     "close": "22:00"
+    },
+    "40-1": {
+     "id": "40-1",
+     "name": "장소40-1",
+     "type": "시장",
+     "lat": 35.65689,
+     "lon": 139.69279,
+     "defaultStayMin": 60,
+     "rating": 4.6,
+     "costPerPerson": 1000,
+     "indoor": true,
+     "lines": [
+      "M"
+     ],
+     "open": "10:00",
+     "close": "20:00"
+    },
+    "40-2": {
+     "id": "40-2",
+     "name": "장소40-2",
+     "type": "공원",
+     "lat": 35.66068,
+     "lon": 139.7252,
+     "defaultStayMin": 45,
+     "rating": 3.1,
+     "costPerPerson": 500,
+     "indoor": false,
+     "lines": [
+      "M"
+     ],
+     "open": "09:00",
+     "close": "17:00"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "cheap"
+  },
+  "cur": 0
+ },
+ "expected": {
+  "items": [
+   {
+    "placeId": "40-0",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-2",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-1",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ],
+  "result": {
+   "rows": [
+    {
+     "kind": "stop",
+     "placeId": "40-0",
+     "name": "장소40-0",
+     "arrive": "08:30",
+     "wait": 150,
+     "start": "11:00",
+     "end": "12:15",
+     "stayMin": 75,
+     "issue": "open",
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "40-0",
+     "to": "40-2",
+     "mode": "transit",
+     "minutes": 36,
+     "fare": 210,
+     "km": 8.25,
+     "estimated": true,
+     "transfers": 2,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0
+    },
+    {
+     "kind": "stop",
+     "placeId": "40-2",
+     "name": "장소40-2",
+     "arrive": "12:55",
+     "wait": 0,
+     "start": "12:55",
+     "end": "13:40",
+     "stayMin": 45,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "40-2",
+     "to": "40-1",
+     "mode": "transit",
+     "minutes": 17,
+     "fare": 180,
+     "km": 3.85,
+     "estimated": true,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0
+    },
+    {
+     "kind": "stop",
+     "placeId": "40-1",
+     "name": "장소40-1",
+     "arrive": "14:00",
+     "wait": 0,
+     "start": "14:00",
+     "end": "15:00",
+     "stayMin": 60,
+     "issue": null,
+     "fixedAt": null
+    }
+   ],
+   "totals": {
+    "moveMin": 53,
+    "farePerPerson": 390,
+    "spendPerPerson": 1890,
+    "end": "15:00",
+    "issues": 1,
+    "overEnd": false
+   }
+  },
+  "applied": true,
+  "messages": [
+   "순서를 바꿨어요: 장소40-2을(를) 2번째로, 장소40-1을(를) 3번째로",
+   "장소40-0 오픈까지 150분이 비어요"
+  ],
+  "dropSuggestion": null,
+  "fillGap": {
+   "position": 0,
+   "waitMin": 150
+  },
+  "undoItems": [
+   {
+    "placeId": "40-0",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-1",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-2",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ]
+ }
+}

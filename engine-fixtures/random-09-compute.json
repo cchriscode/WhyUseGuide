@@ -1,0 +1,247 @@
+{
+ "name": "random-09-compute",
+ "kind": "compute",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "08:30",
+   "items": [
+    {
+     "placeId": "9-0"
+    },
+    {
+     "placeId": "9-1"
+    },
+    {
+     "placeId": "9-2"
+    },
+    {
+     "placeId": "9-3"
+    }
+   ],
+   "places": {
+    "9-0": {
+     "id": "9-0",
+     "name": "장소9-0",
+     "type": "전망",
+     "lat": 35.6827,
+     "lon": 139.68642,
+     "defaultStayMin": 90,
+     "rating": 3.5,
+     "costPerPerson": 0,
+     "indoor": true,
+     "lines": [
+      "A"
+     ],
+     "open": "09:00",
+     "close": "17:00"
+    },
+    "9-1": {
+     "id": "9-1",
+     "name": "장소9-1",
+     "type": "신사·사찰",
+     "lat": 35.69735,
+     "lon": 139.68058,
+     "defaultStayMin": 120,
+     "rating": 3.4,
+     "costPerPerson": 0,
+     "indoor": true,
+     "lines": [
+      "A"
+     ],
+     "open": "09:00",
+     "close": "17:00",
+     "lastEntry": "16:30"
+    },
+    "9-2": {
+     "id": "9-2",
+     "name": "장소9-2",
+     "type": "공원",
+     "lat": 35.69791,
+     "lon": 139.73707,
+     "defaultStayMin": 120,
+     "rating": 5.0,
+     "costPerPerson": 1000,
+     "indoor": false,
+     "lines": [
+      "G"
+     ],
+     "open": "09:30",
+     "close": "16:30"
+    },
+    "9-3": {
+     "id": "9-3",
+     "name": "장소9-3",
+     "type": "박물관",
+     "lat": 35.69594,
+     "lon": 139.7225,
+     "defaultStayMin": 90,
+     "rating": 4.3,
+     "costPerPerson": 2000,
+     "indoor": true,
+     "lines": [
+      "Y"
+     ],
+     "open": "09:00",
+     "close": "17:00",
+     "lastEntry": "16:30"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "balance"
+  }
+ },
+ "expected": {
+  "rows": [
+   {
+    "kind": "stop",
+    "placeId": "9-0",
+    "name": "장소9-0",
+    "arrive": "08:30",
+    "wait": 30,
+    "start": "09:00",
+    "end": "10:30",
+    "stayMin": 90,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "9-0",
+    "to": "9-1",
+    "mode": "transit",
+    "minutes": 14,
+    "fare": 180,
+    "km": 2.23,
+    "estimated": true,
+    "transfers": 0,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0
+   },
+   {
+    "kind": "stop",
+    "placeId": "9-1",
+    "name": "장소9-1",
+    "arrive": "10:45",
+    "wait": 0,
+    "start": "10:45",
+    "end": "12:45",
+    "stayMin": 120,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "9-1",
+    "to": "9-2",
+    "mode": "transit",
+    "minutes": 33,
+    "fare": 210,
+    "km": 6.63,
+    "estimated": true,
+    "transfers": 2,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0
+   },
+   {
+    "kind": "stop",
+    "placeId": "9-2",
+    "name": "장소9-2",
+    "arrive": "13:20",
+    "wait": 0,
+    "start": "13:20",
+    "end": "15:20",
+    "stayMin": 120,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "9-2",
+    "to": "9-3",
+    "mode": "transit",
+    "minutes": 18,
+    "fare": 180,
+    "km": 1.73,
+    "estimated": true,
+    "transfers": 1,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0
+   },
+   {
+    "kind": "stop",
+    "placeId": "9-3",
+    "name": "장소9-3",
+    "arrive": "15:40",
+    "wait": 0,
+    "start": "15:40",
+    "end": "17:10",
+    "stayMin": 90,
+    "issue": "close",
+    "fixedAt": null
+   }
+  ],
+  "totals": {
+   "moveMin": 65,
+   "farePerPerson": 570,
+   "spendPerPerson": 3570,
+   "end": "17:10",
+   "issues": 1,
+   "overEnd": false
+  }
+ }
+}

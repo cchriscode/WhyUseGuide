@@ -1,0 +1,203 @@
+{
+ "name": "random-27-compute",
+ "kind": "compute",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "08:30",
+   "items": [
+    {
+     "placeId": "27-0"
+    },
+    {
+     "placeId": "27-1",
+     "fixedAt": "11:00"
+    },
+    {
+     "placeId": "27-2"
+    }
+   ],
+   "places": {
+    "27-0": {
+     "id": "27-0",
+     "name": "장소27-0",
+     "type": "신사·사찰",
+     "lat": 35.67136,
+     "lon": 139.81205,
+     "defaultStayMin": 30,
+     "rating": 4.7,
+     "costPerPerson": 0,
+     "indoor": true,
+     "lines": [
+      "A",
+      "Y"
+     ],
+     "open": "11:00",
+     "close": "22:00"
+    },
+    "27-1": {
+     "id": "27-1",
+     "name": "장소27-1",
+     "type": "카페 거리",
+     "lat": 35.67125,
+     "lon": 139.74133,
+     "defaultStayMin": 75,
+     "rating": 4.0,
+     "costPerPerson": 500,
+     "indoor": false,
+     "lines": [
+      "M"
+     ],
+     "open": "09:00",
+     "close": "17:00"
+    },
+    "27-2": {
+     "id": "27-2",
+     "name": "장소27-2",
+     "type": "공원",
+     "lat": 35.66032,
+     "lon": 139.75855,
+     "defaultStayMin": 45,
+     "rating": 3.3,
+     "costPerPerson": 2000,
+     "indoor": true,
+     "lines": [
+      "A"
+     ],
+     "open": "10:00",
+     "close": "20:00"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "balance",
+   "dayEnd": "18:00"
+  }
+ },
+ "expected": {
+  "rows": [
+   {
+    "kind": "stop",
+    "placeId": "27-0",
+    "name": "장소27-0",
+    "arrive": "08:30",
+    "wait": 150,
+    "start": "11:00",
+    "end": "11:30",
+    "stayMin": 30,
+    "issue": "open",
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "27-0",
+    "to": "27-1",
+    "mode": "transit",
+    "minutes": 31,
+    "fare": 210,
+    "km": 8.3,
+    "estimated": true,
+    "transfers": 1,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0
+   },
+   {
+    "kind": "stop",
+    "placeId": "27-1",
+    "name": "장소27-1",
+    "arrive": "12:05",
+    "wait": 0,
+    "start": "12:05",
+    "end": "13:20",
+    "stayMin": 75,
+    "issue": "late",
+    "fixedAt": "11:00"
+   },
+   {
+    "kind": "leg",
+    "from": "27-1",
+    "to": "27-2",
+    "mode": "transit",
+    "minutes": 25,
+    "fare": 180,
+    "km": 2.57,
+    "estimated": true,
+    "transfers": 2,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0
+   },
+   {
+    "kind": "stop",
+    "placeId": "27-2",
+    "name": "장소27-2",
+    "arrive": "13:45",
+    "wait": 0,
+    "start": "13:45",
+    "end": "14:30",
+    "stayMin": 45,
+    "issue": null,
+    "fixedAt": null
+   }
+  ],
+  "totals": {
+   "moveMin": 56,
+   "farePerPerson": 390,
+   "spendPerPerson": 2890,
+   "end": "14:30",
+   "issues": 2,
+   "overEnd": false
+  }
+ }
+}

@@ -21,6 +21,30 @@ importers:
         specifier: ^8.72.0
         version: 8.72.0(eslint@10.13.0)(typescript@6.0.3)
 
+  packages/engine-config: {}
+
+  packages/engine-ts:
+    dependencies:
+      '@whyuseguide/engine-config':
+        specifier: workspace:*
+        version: link:../engine-config
+    devDependencies:
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.5
+      jest:
+        specifier: ^30.5.2
+        version: 30.5.2(@types/node@26.6.5)
+      ts-jest:
+        specifier: ^29.4.15
+        version: 29.4.15(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(jest-util@30.5.1)(jest@30.5.2(@types/node@26.6.5))(typescript@6.0.3)
+      typescript:
+        specifier: ~6.0
+        version: 6.0.3
+
   packages/ui-tokens:
     devDependencies:
       '@types/jest':

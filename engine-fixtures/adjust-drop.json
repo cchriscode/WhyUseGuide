@@ -1,0 +1,232 @@
+{
+ "name": "adjust-drop",
+ "kind": "autoAdjust",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "A"
+    },
+    {
+     "placeId": "B"
+    },
+    {
+     "placeId": "C"
+    }
+   ],
+   "places": {
+    "A": {
+     "id": "A",
+     "name": "A",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 300,
+     "rating": 4.5
+    },
+    "B": {
+     "id": "B",
+     "name": "B",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 300,
+     "rating": 3.1
+    },
+    "C": {
+     "id": "C",
+     "name": "C",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 300,
+     "rating": 4.0
+    }
+   },
+   "legs": [
+    {
+     "from": "A",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 30,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "A",
+     "to": "C",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 30,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "B",
+     "to": "A",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 30,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 30,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "C",
+     "to": "A",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 30,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "C",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 30,
+     "fare": 180,
+     "km": 3.0
+    }
+   ],
+   "dayEnd": "15:00"
+  },
+  "cur": -1
+ },
+ "expected": {
+  "items": [
+   {
+    "placeId": "A",
+    "stayMin": 150,
+    "fixedAt": null
+   },
+   {
+    "placeId": "B",
+    "stayMin": 150,
+    "fixedAt": null
+   },
+   {
+    "placeId": "C",
+    "stayMin": 150,
+    "fixedAt": null
+   }
+  ],
+  "result": {
+   "rows": [
+    {
+     "kind": "stop",
+     "placeId": "A",
+     "name": "A",
+     "arrive": "09:00",
+     "wait": 0,
+     "start": "09:00",
+     "end": "11:30",
+     "stayMin": 150,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "A",
+     "to": "B",
+     "mode": "transit",
+     "minutes": 30,
+     "fare": 180,
+     "km": 3.0,
+     "estimated": false,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0
+    },
+    {
+     "kind": "stop",
+     "placeId": "B",
+     "name": "B",
+     "arrive": "12:00",
+     "wait": 0,
+     "start": "12:00",
+     "end": "14:30",
+     "stayMin": 150,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "B",
+     "to": "C",
+     "mode": "transit",
+     "minutes": 30,
+     "fare": 180,
+     "km": 3.0,
+     "estimated": false,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0
+    },
+    {
+     "kind": "stop",
+     "placeId": "C",
+     "name": "C",
+     "arrive": "15:00",
+     "wait": 0,
+     "start": "15:00",
+     "end": "17:30",
+     "stayMin": 150,
+     "issue": null,
+     "fixedAt": null
+    }
+   ],
+   "totals": {
+    "moveMin": 60,
+    "farePerPerson": 360,
+    "spendPerPerson": 360,
+    "end": "17:30",
+    "issues": 0,
+    "overEnd": true
+   }
+  },
+  "applied": true,
+  "messages": [
+   "A 체류 300분 → 150분",
+   "B 체류 300분 → 150분",
+   "C 체류 300분 → 150분",
+   "조정 후 17:30 종료 · 아직 맞지 않는 곳 1건 · 종료 목표를 넘어요 · B 빼기를 제안해요"
+  ],
+  "dropSuggestion": {
+   "placeId": "B",
+   "name": "B"
+  },
+  "fillGap": null,
+  "undoItems": [
+   {
+    "placeId": "A",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "B",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "C",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ]
+ }
+}

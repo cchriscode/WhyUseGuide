@@ -1,0 +1,147 @@
+{
+ "name": "compute-delay",
+ "kind": "compute",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "A"
+    },
+    {
+     "placeId": "B"
+    },
+    {
+     "placeId": "C"
+    }
+   ],
+   "places": {
+    "A": {
+     "id": "A",
+     "name": "A",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60
+    },
+    "B": {
+     "id": "B",
+     "name": "B",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60
+    },
+    "C": {
+     "id": "C",
+     "name": "C",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60
+    }
+   },
+   "legs": [
+    {
+     "from": "A",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "B",
+     "to": "C",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0
+    }
+   ],
+   "delay": {
+    "gap": 1,
+    "minutes": 20
+   }
+  }
+ },
+ "expected": {
+  "rows": [
+   {
+    "kind": "stop",
+    "placeId": "A",
+    "name": "A",
+    "arrive": "09:00",
+    "wait": 0,
+    "start": "09:00",
+    "end": "10:00",
+    "stayMin": 60,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "A",
+    "to": "B",
+    "mode": "transit",
+    "minutes": 10,
+    "fare": 180,
+    "km": 3.0,
+    "estimated": false,
+    "transfers": 0,
+    "label": "",
+    "delayMin": 20,
+    "breakMin": 0
+   },
+   {
+    "kind": "stop",
+    "placeId": "B",
+    "name": "B",
+    "arrive": "10:30",
+    "wait": 0,
+    "start": "10:30",
+    "end": "11:30",
+    "stayMin": 60,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "B",
+    "to": "C",
+    "mode": "transit",
+    "minutes": 10,
+    "fare": 180,
+    "km": 3.0,
+    "estimated": false,
+    "transfers": 0,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0
+   },
+   {
+    "kind": "stop",
+    "placeId": "C",
+    "name": "C",
+    "arrive": "11:40",
+    "wait": 0,
+    "start": "11:40",
+    "end": "12:40",
+    "stayMin": 60,
+    "issue": null,
+    "fixedAt": null
+   }
+  ],
+  "totals": {
+   "moveMin": 20,
+   "farePerPerson": 360,
+   "spendPerPerson": 360,
+   "end": "12:40",
+   "issues": 0,
+   "overEnd": false
+  }
+ }
+}

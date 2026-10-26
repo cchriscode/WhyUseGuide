@@ -1,0 +1,264 @@
+{
+ "name": "random-14-suggest",
+ "kind": "suggest",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "14-0"
+    },
+    {
+     "placeId": "14-1",
+     "fixedAt": "15:00"
+    }
+   ],
+   "places": {
+    "14-0": {
+     "id": "14-0",
+     "name": "장소14-0",
+     "type": "맛집",
+     "lat": 35.66217,
+     "lon": 139.71481,
+     "defaultStayMin": 30,
+     "rating": 3.8,
+     "costPerPerson": 0,
+     "indoor": false,
+     "lines": [
+      "A",
+      "Y"
+     ],
+     "open": "09:30",
+     "close": "16:30"
+    },
+    "14-1": {
+     "id": "14-1",
+     "name": "장소14-1",
+     "type": "신사·사찰",
+     "lat": 35.69765,
+     "lon": 139.78211,
+     "defaultStayMin": 75,
+     "rating": 3.1,
+     "costPerPerson": 500,
+     "indoor": false,
+     "lines": [
+      "G"
+     ],
+     "open": "09:30",
+     "close": "16:30"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "balance"
+  },
+  "mode": "between",
+  "cur": -1,
+  "position": 1,
+  "candidates": [
+   {
+    "id": "14-c0",
+    "name": "장소14-c0",
+    "type": "카페 거리",
+    "lat": 35.67005,
+    "lon": 139.80023,
+    "defaultStayMin": 90,
+    "rating": 4.3,
+    "costPerPerson": 0,
+    "indoor": false,
+    "lines": [
+     "H"
+    ]
+   },
+   {
+    "id": "14-c1",
+    "name": "장소14-c1",
+    "type": "전망",
+    "lat": 35.67714,
+    "lon": 139.7502,
+    "defaultStayMin": 45,
+    "rating": 3.8,
+    "costPerPerson": 2000,
+    "indoor": true,
+    "lines": [
+     "H",
+     "Y"
+    ]
+   },
+   {
+    "id": "14-c2",
+    "name": "장소14-c2",
+    "type": "시장",
+    "lat": 35.67697,
+    "lon": 139.74968,
+    "defaultStayMin": 75,
+    "rating": 3.2,
+    "costPerPerson": 0,
+    "indoor": true,
+    "lines": [
+     "A",
+     "M"
+    ]
+   },
+   {
+    "id": "14-c3",
+    "name": "장소14-c3",
+    "type": "시장",
+    "lat": 35.70581,
+    "lon": 139.77068,
+    "defaultStayMin": 30,
+    "rating": 3.1,
+    "costPerPerson": 0,
+    "indoor": false,
+    "lines": [
+     "Y"
+    ],
+    "open": "09:30",
+    "close": "16:30"
+   },
+   {
+    "id": "14-c4",
+    "name": "장소14-c4",
+    "type": "전망",
+    "lat": 35.67952,
+    "lon": 139.81445,
+    "defaultStayMin": 45,
+    "rating": 3.1,
+    "costPerPerson": 2000,
+    "indoor": false,
+    "lines": [
+     "M"
+    ],
+    "open": "09:30",
+    "close": "16:30"
+   },
+   {
+    "id": "14-c5",
+    "name": "장소14-c5",
+    "type": "신사·사찰",
+    "lat": 35.68273,
+    "lon": 139.70111,
+    "defaultStayMin": 30,
+    "rating": 3.3,
+    "costPerPerson": 0,
+    "indoor": false,
+    "lines": [
+     "G"
+    ],
+    "open": "09:30",
+    "close": "16:30"
+   }
+  ]
+ },
+ "expected": [
+  {
+   "placeId": "14-c1",
+   "name": "장소14-c1",
+   "position": 1,
+   "score": -33.8,
+   "detourMin": 9,
+   "arrive": "10:20",
+   "endAfter": "16:15",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "가는 길",
+    "실내"
+   ],
+   "effect": "9분 돌아가요 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
+   "placeId": "14-c2",
+   "name": "장소14-c2",
+   "position": 1,
+   "score": -30.2,
+   "detourMin": 9,
+   "arrive": "10:20",
+   "endAfter": "16:15",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "가는 길",
+    "실내"
+   ],
+   "effect": "9분 돌아가요 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
+   "placeId": "14-c3",
+   "name": "장소14-c3",
+   "position": 1,
+   "score": -26.6,
+   "detourMin": 12,
+   "arrive": "10:30",
+   "endAfter": "16:15",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용"
+   ],
+   "effect": "12분 돌아가요 · 끝나는 시간 그대로",
+   "warning": null
+  }
+ ]
+}

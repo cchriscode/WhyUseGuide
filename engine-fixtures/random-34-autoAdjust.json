@@ -1,0 +1,247 @@
+{
+ "name": "random-34-autoAdjust",
+ "kind": "autoAdjust",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "34-0"
+    },
+    {
+     "placeId": "34-1"
+    },
+    {
+     "placeId": "34-2",
+     "fixedAt": "17:00"
+    }
+   ],
+   "places": {
+    "34-0": {
+     "id": "34-0",
+     "name": "장소34-0",
+     "type": "맛집",
+     "lat": 35.71618,
+     "lon": 139.71361,
+     "defaultStayMin": 75,
+     "rating": 4.5,
+     "costPerPerson": 1000,
+     "indoor": true,
+     "lines": [
+      "H"
+     ],
+     "open": "10:00",
+     "close": "20:00"
+    },
+    "34-1": {
+     "id": "34-1",
+     "name": "장소34-1",
+     "type": "신사·사찰",
+     "lat": 35.70478,
+     "lon": 139.71538,
+     "defaultStayMin": 75,
+     "rating": 4.9,
+     "costPerPerson": 0,
+     "indoor": false,
+     "lines": [
+      "H",
+      "M"
+     ]
+    },
+    "34-2": {
+     "id": "34-2",
+     "name": "장소34-2",
+     "type": "공원",
+     "lat": 35.71875,
+     "lon": 139.75294,
+     "defaultStayMin": 60,
+     "rating": 3.5,
+     "costPerPerson": 0,
+     "indoor": false,
+     "lines": [
+      "O"
+     ],
+     "closed": true
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "fast"
+  },
+  "cur": -1
+ },
+ "expected": {
+  "items": [
+   {
+    "placeId": "34-0",
+    "stayMin": 38,
+    "fixedAt": null
+   },
+   {
+    "placeId": "34-1",
+    "stayMin": 38,
+    "fixedAt": null
+   },
+   {
+    "placeId": "34-2",
+    "stayMin": null,
+    "fixedAt": "17:00"
+   }
+  ],
+  "result": {
+   "rows": [
+    {
+     "kind": "stop",
+     "placeId": "34-0",
+     "name": "장소34-0",
+     "arrive": "09:00",
+     "wait": 60,
+     "start": "10:00",
+     "end": "10:38",
+     "stayMin": 38,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "34-0",
+     "to": "34-1",
+     "mode": "transit",
+     "minutes": 13,
+     "fare": 180,
+     "km": 1.66,
+     "estimated": true,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0
+    },
+    {
+     "kind": "stop",
+     "placeId": "34-1",
+     "name": "장소34-1",
+     "arrive": "10:55",
+     "wait": 0,
+     "start": "10:55",
+     "end": "11:33",
+     "stayMin": 38,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "34-1",
+     "to": "34-2",
+     "mode": "transit",
+     "minutes": 29,
+     "fare": 180,
+     "km": 4.85,
+     "estimated": true,
+     "transfers": 2,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0
+    },
+    {
+     "kind": "stop",
+     "placeId": "34-2",
+     "name": "장소34-2",
+     "arrive": "12:05",
+     "wait": 295,
+     "start": "17:00",
+     "end": "18:00",
+     "stayMin": 60,
+     "issue": "close",
+     "fixedAt": "17:00"
+    }
+   ],
+   "totals": {
+    "moveMin": 42,
+    "farePerPerson": 360,
+    "spendPerPerson": 1360,
+    "end": "18:00",
+    "issues": 1,
+    "overEnd": false
+   }
+  },
+  "applied": true,
+  "messages": [
+   "장소34-0 체류 75분 → 38분",
+   "장소34-1 체류 75분 → 38분",
+   "조정 후 18:00 종료 · 아직 맞지 않는 곳 1건 · 장소34-0 빼기를 제안해요"
+  ],
+  "dropSuggestion": {
+   "placeId": "34-0",
+   "name": "장소34-0"
+  },
+  "fillGap": null,
+  "undoItems": [
+   {
+    "placeId": "34-0",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "34-1",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "34-2",
+    "stayMin": null,
+    "fixedAt": "17:00"
+   }
+  ]
+ }
+}

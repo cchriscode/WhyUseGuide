@@ -1,0 +1,242 @@
+{
+ "name": "random-44-suggest",
+ "kind": "suggest",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "44-0"
+    },
+    {
+     "placeId": "44-1"
+    },
+    {
+     "placeId": "44-2",
+     "fixedAt": "11:00",
+     "stayMin": 30
+    }
+   ],
+   "places": {
+    "44-0": {
+     "id": "44-0",
+     "name": "장소44-0",
+     "type": "카페 거리",
+     "lat": 35.6574,
+     "lon": 139.76469,
+     "defaultStayMin": 75,
+     "rating": 4.3,
+     "costPerPerson": 1000,
+     "indoor": false,
+     "lines": [
+      "M",
+      "O"
+     ],
+     "open": "09:00",
+     "close": "17:00"
+    },
+    "44-1": {
+     "id": "44-1",
+     "name": "장소44-1",
+     "type": "신사·사찰",
+     "lat": 35.70415,
+     "lon": 139.71979,
+     "defaultStayMin": 30,
+     "rating": 4.1,
+     "costPerPerson": 2000,
+     "indoor": true,
+     "lines": [
+      "Y"
+     ]
+    },
+    "44-2": {
+     "id": "44-2",
+     "name": "장소44-2",
+     "type": "시장",
+     "lat": 35.71183,
+     "lon": 139.69849,
+     "defaultStayMin": 45,
+     "rating": 4.6,
+     "costPerPerson": 2000,
+     "indoor": true,
+     "lines": [
+      "H",
+      "M"
+     ],
+     "open": "11:00",
+     "close": "22:00"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "balance",
+   "startPoint": {
+    "lat": 35.69,
+    "lon": 139.7
+   },
+   "endPoint": {
+    "lat": 35.69,
+    "lon": 139.7
+   },
+   "dayEnd": "20:00"
+  },
+  "mode": "between",
+  "cur": -1,
+  "position": 1,
+  "candidates": [
+   {
+    "id": "44-c0",
+    "name": "장소44-c0",
+    "type": "시장",
+    "lat": 35.71541,
+    "lon": 139.72478,
+    "defaultStayMin": 60,
+    "rating": 3.6,
+    "costPerPerson": 500,
+    "indoor": false,
+    "lines": [
+     "H"
+    ],
+    "closed": true
+   },
+   {
+    "id": "44-c1",
+    "name": "장소44-c1",
+    "type": "전망",
+    "lat": 35.71068,
+    "lon": 139.71485,
+    "defaultStayMin": 45,
+    "rating": 3.4,
+    "costPerPerson": 2000,
+    "indoor": true,
+    "lines": [
+     "G"
+    ],
+    "open": "11:00",
+    "close": "22:00"
+   },
+   {
+    "id": "44-c2",
+    "name": "장소44-c2",
+    "type": "시장",
+    "lat": 35.66934,
+    "lon": 139.73833,
+    "defaultStayMin": 90,
+    "rating": 4.4,
+    "costPerPerson": 0,
+    "indoor": false,
+    "lines": [
+     "M",
+     "Y"
+    ],
+    "open": "10:00",
+    "close": "20:00"
+   }
+  ]
+ },
+ "expected": [
+  {
+   "placeId": "44-c2",
+   "name": "장소44-c2",
+   "position": 1,
+   "score": -22.4,
+   "detourMin": 4,
+   "arrive": "11:15",
+   "endAfter": "14:25",
+   "absorbed": false,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "가는 길"
+   ],
+   "effect": "4분 돌아가요 · 끝나는 시간 95분 늦어져요",
+   "warning": null
+  },
+  {
+   "placeId": "44-c1",
+   "name": "장소44-c1",
+   "position": 1,
+   "score": -3.4,
+   "detourMin": 17,
+   "arrive": "11:30",
+   "endAfter": "13:50",
+   "absorbed": false,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "실내"
+   ],
+   "effect": "17분 돌아가요 · 끝나는 시간 60분 늦어져요",
+   "warning": null
+  },
+  {
+   "placeId": "44-c0",
+   "name": "장소44-c0",
+   "position": 1,
+   "score": 78.4,
+   "detourMin": 20,
+   "arrive": "11:30",
+   "endAfter": "14:10",
+   "absorbed": false,
+   "sameType": false,
+   "outsideHours": true,
+   "newIssues": 0,
+   "badges": [],
+   "effect": "20분 돌아가요 · 끝나는 시간 80분 늦어져요",
+   "warning": "영업시간 밖이에요"
+  }
+ ]
+}

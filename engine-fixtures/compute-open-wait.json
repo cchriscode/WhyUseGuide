@@ -1,0 +1,98 @@
+{
+ "name": "compute-open-wait",
+ "kind": "compute",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "A"
+    },
+    {
+     "placeId": "B"
+    }
+   ],
+   "places": {
+    "A": {
+     "id": "A",
+     "name": "A",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60
+    },
+    "B": {
+     "id": "B",
+     "name": "B",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60,
+     "open": "12:00"
+    }
+   },
+   "legs": [
+    {
+     "from": "A",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 5,
+     "fare": 180,
+     "km": 3.0
+    }
+   ]
+  }
+ },
+ "expected": {
+  "rows": [
+   {
+    "kind": "stop",
+    "placeId": "A",
+    "name": "A",
+    "arrive": "09:00",
+    "wait": 0,
+    "start": "09:00",
+    "end": "10:00",
+    "stayMin": 60,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "A",
+    "to": "B",
+    "mode": "transit",
+    "minutes": 5,
+    "fare": 180,
+    "km": 3.0,
+    "estimated": false,
+    "transfers": 0,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0
+   },
+   {
+    "kind": "stop",
+    "placeId": "B",
+    "name": "B",
+    "arrive": "10:05",
+    "wait": 115,
+    "start": "12:00",
+    "end": "13:00",
+    "stayMin": 60,
+    "issue": "open",
+    "fixedAt": null
+   }
+  ],
+  "totals": {
+   "moveMin": 5,
+   "farePerPerson": 180,
+   "spendPerPerson": 180,
+   "end": "13:00",
+   "issues": 1,
+   "overEnd": false
+  }
+ }
+}

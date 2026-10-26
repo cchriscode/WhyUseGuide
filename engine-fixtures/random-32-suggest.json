@@ -1,0 +1,246 @@
+{
+ "name": "random-32-suggest",
+ "kind": "suggest",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "08:30",
+   "items": [
+    {
+     "placeId": "32-0"
+    },
+    {
+     "placeId": "32-1"
+    },
+    {
+     "placeId": "32-2"
+    }
+   ],
+   "places": {
+    "32-0": {
+     "id": "32-0",
+     "name": "장소32-0",
+     "type": "시장",
+     "lat": 35.71202,
+     "lon": 139.72583,
+     "defaultStayMin": 90,
+     "rating": 4.7,
+     "costPerPerson": 500,
+     "indoor": false,
+     "lines": [
+      "O"
+     ],
+     "open": "10:00",
+     "close": "20:00"
+    },
+    "32-1": {
+     "id": "32-1",
+     "name": "장소32-1",
+     "type": "신사·사찰",
+     "lat": 35.65726,
+     "lon": 139.68597,
+     "defaultStayMin": 75,
+     "rating": 4.9,
+     "costPerPerson": 0,
+     "indoor": true,
+     "lines": [
+      "G",
+      "O"
+     ]
+    },
+    "32-2": {
+     "id": "32-2",
+     "name": "장소32-2",
+     "type": "전망",
+     "lat": 35.68954,
+     "lon": 139.69026,
+     "defaultStayMin": 120,
+     "rating": 4.8,
+     "costPerPerson": 500,
+     "indoor": false,
+     "lines": [
+      "H",
+      "Y"
+     ],
+     "open": "09:00",
+     "close": "17:00"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "balance"
+  },
+  "mode": "replace",
+  "cur": -1,
+  "position": 1,
+  "candidates": [
+   {
+    "id": "32-c0",
+    "name": "장소32-c0",
+    "type": "신사·사찰",
+    "lat": 35.66396,
+    "lon": 139.74033,
+    "defaultStayMin": 120,
+    "rating": 4.7,
+    "costPerPerson": 500,
+    "indoor": false,
+    "lines": [
+     "G"
+    ]
+   },
+   {
+    "id": "32-c1",
+    "name": "장소32-c1",
+    "type": "공원",
+    "lat": 35.72581,
+    "lon": 139.77563,
+    "defaultStayMin": 60,
+    "rating": 4.6,
+    "costPerPerson": 500,
+    "indoor": false,
+    "lines": [
+     "O"
+    ],
+    "open": "09:30",
+    "close": "16:30"
+   },
+   {
+    "id": "32-c2",
+    "name": "장소32-c2",
+    "type": "시장",
+    "lat": 35.7042,
+    "lon": 139.81292,
+    "defaultStayMin": 60,
+    "rating": 3.9,
+    "costPerPerson": 1000,
+    "indoor": false,
+    "lines": [
+     "H",
+     "M"
+    ],
+    "open": "09:30",
+    "close": "16:30"
+   },
+   {
+    "id": "32-c3",
+    "name": "장소32-c3",
+    "type": "전망",
+    "lat": 35.68377,
+    "lon": 139.73523,
+    "defaultStayMin": 90,
+    "rating": 4.2,
+    "costPerPerson": 1000,
+    "indoor": false,
+    "lines": [
+     "O"
+    ]
+   }
+  ]
+ },
+ "expected": [
+  {
+   "placeId": "32-c0",
+   "name": "장소32-c0",
+   "position": 1,
+   "score": -42.2,
+   "detourMin": 11,
+   "arrive": "12:05",
+   "endAfter": "16:35",
+   "absorbed": false,
+   "sameType": true,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "비슷한 곳"
+   ],
+   "effect": "11분 돌아가요 · 끝나는 시간 55분 늦어져요",
+   "warning": null
+  },
+  {
+   "placeId": "32-c1",
+   "name": "장소32-c1",
+   "position": 1,
+   "score": -35.6,
+   "detourMin": 12,
+   "arrive": "11:55",
+   "endAfter": "15:40",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용"
+   ],
+   "effect": "12분 돌아가요 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
+   "placeId": "32-c3",
+   "name": "장소32-c3",
+   "position": 1,
+   "score": -28.2,
+   "detourMin": -3,
+   "arrive": "11:50",
+   "endAfter": "15:50",
+   "absorbed": false,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "가는 길"
+   ],
+   "effect": "이동이 3분 줄어요 · 끝나는 시간 10분 늦어져요",
+   "warning": null
+  }
+ ]
+}

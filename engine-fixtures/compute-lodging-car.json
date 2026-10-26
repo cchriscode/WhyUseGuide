@@ -1,0 +1,106 @@
+{
+ "name": "compute-lodging-car",
+ "kind": "compute",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "A"
+    }
+   ],
+   "places": {
+    "A": {
+     "id": "A",
+     "name": "A",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60
+    }
+   },
+   "legs": [
+    {
+     "from": "@start",
+     "to": "A",
+     "planMode": "balance",
+     "mode": "car",
+     "minutes": 20,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "A",
+     "to": "@end",
+     "planMode": "balance",
+     "mode": "car",
+     "minutes": 30,
+     "fare": 180,
+     "km": 3.0
+    }
+   ],
+   "transport": "car",
+   "startPoint": {
+    "lat": 35.69,
+    "lon": 139.7
+   },
+   "endPoint": {
+    "lat": 35.69,
+    "lon": 139.7
+   }
+  }
+ },
+ "expected": {
+  "rows": [
+   {
+    "kind": "leg",
+    "from": "@start",
+    "to": "A",
+    "mode": "car",
+    "minutes": 20,
+    "fare": 180,
+    "km": 3.0,
+    "estimated": false,
+    "transfers": 0,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0
+   },
+   {
+    "kind": "stop",
+    "placeId": "A",
+    "name": "A",
+    "arrive": "09:20",
+    "wait": 0,
+    "start": "09:20",
+    "end": "10:20",
+    "stayMin": 60,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "A",
+    "to": "@end",
+    "mode": "car",
+    "minutes": 30,
+    "fare": 180,
+    "km": 3.0,
+    "estimated": false,
+    "transfers": 0,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0
+   }
+  ],
+  "totals": {
+   "moveMin": 50,
+   "farePerPerson": 360,
+   "spendPerPerson": 360,
+   "end": "10:50",
+   "issues": 0,
+   "overEnd": false
+  }
+ }
+}

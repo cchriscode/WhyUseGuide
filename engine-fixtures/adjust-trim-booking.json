@@ -1,0 +1,142 @@
+{
+ "name": "adjust-trim-booking",
+ "kind": "autoAdjust",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "A"
+    },
+    {
+     "placeId": "C",
+     "fixedAt": "11:30"
+    }
+   ],
+   "places": {
+    "A": {
+     "id": "A",
+     "name": "A",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 180,
+     "close": "12:00"
+    },
+    "C": {
+     "id": "C",
+     "name": "C",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60
+    }
+   },
+   "legs": [
+    {
+     "from": "A",
+     "to": "C",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "C",
+     "to": "A",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0
+    }
+   ]
+  },
+  "cur": -1
+ },
+ "expected": {
+  "items": [
+   {
+    "placeId": "A",
+    "stayMin": 150,
+    "fixedAt": null
+   },
+   {
+    "placeId": "C",
+    "stayMin": null,
+    "fixedAt": "11:30"
+   }
+  ],
+  "result": {
+   "rows": [
+    {
+     "kind": "stop",
+     "placeId": "A",
+     "name": "A",
+     "arrive": "09:00",
+     "wait": 0,
+     "start": "09:00",
+     "end": "11:30",
+     "stayMin": 150,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "A",
+     "to": "C",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0,
+     "estimated": false,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0
+    },
+    {
+     "kind": "stop",
+     "placeId": "C",
+     "name": "C",
+     "arrive": "11:40",
+     "wait": 0,
+     "start": "11:40",
+     "end": "12:40",
+     "stayMin": 60,
+     "issue": null,
+     "fixedAt": "11:30"
+    }
+   ],
+   "totals": {
+    "moveMin": 10,
+    "farePerPerson": 180,
+    "spendPerPerson": 180,
+    "end": "12:40",
+    "issues": 0,
+    "overEnd": false
+   }
+  },
+  "applied": true,
+  "messages": [
+   "A 체류 180분 → 150분",
+   "조정 후 12:40 종료 · 예약과 영업시간 모두 맞아요"
+  ],
+  "dropSuggestion": null,
+  "fillGap": null,
+  "undoItems": [
+   {
+    "placeId": "A",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "C",
+    "stayMin": null,
+    "fixedAt": "11:30"
+   }
+  ]
+ }
+}
