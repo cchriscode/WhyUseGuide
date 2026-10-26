@@ -1,0 +1,16 @@
+[tool.uv.workspace]
+members = ["services/api"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.ruff.lint.isort]
+known-first-party = ["whyuseguide_api"]
