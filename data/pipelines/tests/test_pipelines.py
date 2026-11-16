@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+import zipfile
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from support import make_feed
 
 from whyuseguide_pipelines import cli
 from whyuseguide_pipelines.fetch import fetch, provenance_path
-from whyuseguide_pipelines.gtfs import validate_feed
+from whyuseguide_pipelines.gtfs import stage_for_otp, validate_feed
 from whyuseguide_pipelines.places import WIKIDATA_TYPES
 from whyuseguide_pipelines.sources import PIPELINES_DIR, Source, load_sources
 
@@ -73,6 +74,25 @@ def test_out_of_service_reports_feeds_that_do_not_run_on_the_date(
     assert cli.out_of_service([src], [start], date(2026, 10, 26)) == []
     problems = cli.out_of_service([src], [start - timedelta(days=1), date(2030, 1, 1)], date(2026, 10, 26))
     assert len(problems) == 2 and all(p.startswith("feed: ") for p in problems)
+
+
+def test_stage_for_otp_drops_only_legacy_translations(tmp_path: Path) -> None:
+    """옛 GTFS-JP 번역 파일은 OTP 그래프 빌드를 멈춘다(오다큐 버스). 그 파일만 빼고 나머지는 그대로."""
+    legacy = make_feed(
+        tmp_path, GOOD_FEED | {"translations.txt": "trans_id,lang,translation\n浅草,en,Asakusa\n"}
+    )
+    out = tmp_path / "staged.zip"
+    assert stage_for_otp(legacy, out) == ["translations.txt"]
+    with zipfile.ZipFile(out) as zf:
+        assert set(zf.namelist()) == set(GOOD_FEED)
+        assert zf.read("stops.txt").decode() == GOOD_FEED["stops.txt"]
+    assert validate_feed(out, today=date(2026, 10, 26)).ok
+
+    current = "table_name,field_name,language,translation,record_id\nstops,stop_name,en,Asakusa,1\n"
+    modern = make_feed(tmp_path, GOOD_FEED | {"translations.txt": current})
+    assert stage_for_otp(modern, out) == []
+    with zipfile.ZipFile(out) as zf:
+        assert zf.read("translations.txt").decode() == current
 
 
 def test_missing_required_file(tmp_path: Path) -> None:
@@ -143,6 +163,60 @@ def test_fetch_sends_token_but_never_records_it(tmp_path: Path) -> None:
         fetch(source, tmp_path, client, token="wrong-token")
     assert "wrong-token" not in str(err.value)
     assert len(seen) == 2
+
+
+def test_fetch_keeps_the_query_already_in_the_url(tmp_path: Path) -> None:
+    """ODPT 파일 주소는 ?date=current가 붙는다. 토큰을 더할 때 그 쿼리가 사라지면 404가 난다."""
+    seen: list[httpx.URL] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req.url)
+        return httpx.Response(200, content=b"zip")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with_token = Source(
+        "bus", "gtfs", "https://example.test/AllLines.zip?date=current", "ODPT", "x", "weekly", True,
+        city="tokyo", token_env="ODPT_TOKEN",
+    )  # fmt: skip
+    path = fetch(with_token, tmp_path, client, token="secret-token")
+    assert path.name == "AllLines.zip"
+    assert dict(seen[-1].params) == {"date": "current", "acl:consumerKey": "secret-token"}
+    public = Source(
+        "pub", "gtfs", "https://example.test/Open.zip?date=current", "CC BY 4.0", "x", "weekly", True
+    )
+    fetch(public, tmp_path, client)
+    assert dict(seen[-1].params) == {"date": "current"}
+
+
+def test_source_file_name_can_be_set_when_the_url_has_none(tmp_path: Path) -> None:
+    """ODPT API 주소의 마지막 부분("odpt:Station")은 파일 이름으로 쓸 수 없다(콜론)."""
+    source = Source(
+        "stations", "file", "https://example.test/api/v4/odpt:Station?odpt:operator=X", "ODPT", "x", "weekly",
+        False, save_as="stations.json",
+    )  # fmt: skip
+    client = httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, content=b"[]")))
+    assert fetch(source, tmp_path, client) == tmp_path / "stations" / "stations.json"
+
+
+def test_registry_rejects_inputs_that_point_nowhere(tmp_path: Path) -> None:
+    path = tmp_path / "sources.toml"
+    path.write_text(
+        """
+[[source]]
+id = "built"
+kind = "gtfs"
+url = "local:odpt-station-timetable"
+license = "x"
+attribution = "x"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+inputs = { stations = "nope" }
+""",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="unknown source"):
+        load_sources(path)
 
 
 def test_resolve_token_reads_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

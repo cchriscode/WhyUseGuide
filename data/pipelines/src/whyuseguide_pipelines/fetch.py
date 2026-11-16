@@ -34,14 +34,16 @@ def fetch(source: Source, raw_dir: Path, client: httpx.Client, token: str | None
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_name(target.name + ".part")
     digest = hashlib.sha256()
-    params: dict[str, str] = {}
+    # httpx는 params를 주면 주소에 이미 있는 쿼리를 버린다. 주소의 쿼리를 먼저 담고 그 위에 더한다.
+    url = httpx.URL(source.url)
+    params: dict[str, str] = dict(url.params)
     headers = {"User-Agent": USER_AGENT}
     if source.kind == "sparql" and source.query:
-        params = {"query": (PIPELINES_DIR / source.query).read_text(encoding="utf-8"), "format": "json"}
+        params |= {"query": (PIPELINES_DIR / source.query).read_text(encoding="utf-8"), "format": "json"}
         headers["Accept"] = "application/sparql-results+json"
     if source.token_env:
         params[ODPT_TOKEN_PARAM] = token or resolve_token(source.token_env)
-    with client.stream("GET", source.url, params=params, headers=headers) as resp:
+    with client.stream("GET", url.copy_with(query=None), params=params, headers=headers) as resp:
         if resp.is_error:
             raise httpx.HTTPStatusError(
                 f"{source.id}: HTTP {resp.status_code} ({source.url})", request=resp.request, response=resp

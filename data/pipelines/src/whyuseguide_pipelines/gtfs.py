@@ -90,6 +90,25 @@ def validate_feed(path: Path, today: date, warn_within_days: int = 30) -> FeedRe
     return report
 
 
+def stage_for_otp(src: Path, dst: Path) -> list[str]:
+    """GTFS zip을 OTP 입력으로 복사한다. OTP가 읽다가 멈추는 파일은 빼고, 뺀 파일 이름을 돌려준다.
+
+    옛 GTFS-JP 형식의 translations.txt(trans_id,lang,translation)는 OTP가 필수 칸(table_name)이 없다며
+    그래프 빌드 전체를 멈춘다. 경로 계산에는 번역이 필요 없어서 그 파일만 뺀다.
+    """
+    dropped = []
+    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == "translations.txt":
+                header = data.decode("utf-8-sig", errors="replace").splitlines()[:1]
+                if not header or "table_name" not in header[0].split(","):
+                    dropped.append(item.filename)
+                    continue
+            zout.writestr(item, data)
+    return dropped
+
+
 @dataclass(frozen=True)
 class GtfsLine:
     route_id: str
@@ -97,6 +116,7 @@ class GtfsLine:
     name_en: str | None
     color_hex: str | None
     operator: str
+    name_ko: str | None = None  # 피드가 주는 공식 한국어 이름(translations.txt)
 
 
 @dataclass(frozen=True)
@@ -108,6 +128,7 @@ class GtfsStop:
     lat: float
     lon: float
     parent_stop_id: str | None
+    name_ko: str | None = None  # 피드가 주는 공식 한국어 이름(translations.txt)
 
 
 @dataclass
@@ -148,6 +169,7 @@ def read_network(path: Path) -> Network:
     with zipfile.ZipFile(path) as zf:
         names = set(zf.namelist())
         en = _translations(zf, names, "en")
+        ko = _translations(zf, names, "ko")
         agencies = {r.get("agency_id", ""): r["agency_name"] for r in _rows(zf, "agency.txt")}
         default_agency = next(iter(agencies.values()))
         lines = []
@@ -161,6 +183,8 @@ def read_network(path: Path) -> Network:
                     or en.get(("routes.route_long_name", name)),
                     color_hex=_color(r.get("route_color")),
                     operator=agencies.get(r.get("agency_id", ""), default_agency),
+                    name_ko=ko.get(("routes.route_long_name", r["route_id"]))
+                    or ko.get(("routes.route_long_name", name)),
                 )
             )
         stops = [
@@ -173,6 +197,8 @@ def read_network(path: Path) -> Network:
                 lat=float(r["stop_lat"]),
                 lon=float(r["stop_lon"]),
                 parent_stop_id=r.get("parent_station") or None,
+                name_ko=ko.get(("stops.stop_name", r["stop_id"]))
+                or ko.get(("stops.stop_name", r["stop_name"])),
             )
             for r in _rows(zf, "stops.txt")
             if r.get("location_type", "") in STOP_LOCATION_TYPES

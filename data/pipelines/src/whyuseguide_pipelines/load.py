@@ -89,6 +89,19 @@ def load_network(
         k: v for k, v in conn.execute(select(Line.gtfs_route_id, Line.id).where(Line.source_id == source_id))
     }
 
+    # 피드가 준 공식 한국어 이름은 그대로 쓴다(편집 목록·기계 변환보다 앞선다).
+    for model, ids, items in (
+        (Line, line_ids, [(ln.route_id, ln.name_ko) for ln in network.lines]),
+        (Stop, stop_ids, [(s.stop_id, s.name_ko) for s in network.stops]),
+    ):
+        for key, name_ko in items:
+            if name_ko:
+                conn.execute(
+                    update(model)
+                    .where(model.id == ids[key])
+                    .values(name_ko=name_ko, name_ko_source=NameSource.official)
+                )
+
     for s in network.stops:
         parent = stop_ids.get(s.parent_stop_id) if s.parent_stop_id else None
         conn.execute(update(Stop).where(Stop.id == stop_ids[s.stop_id]).values(parent_station_id=parent))

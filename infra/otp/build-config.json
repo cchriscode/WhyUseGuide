@@ -1,5 +1,6 @@
 {
   "osmDefaults": {
     "timeZone": "Asia/Tokyo"
-  }
+  },
+  "fares": "gtfs"
 }

@@ -32,17 +32,17 @@ def test_incomplete_entry_stops_instead_of_loading_zero() -> None:
 
 
 def test_tokyo_fares_match_the_checked_figures() -> None:
-    """city_fares.toml의 도쿄 값: 도쿄메트로 승차권 운임과 2026-04-20 택시 운임(출처는 그 파일)."""
+    """city_fares.toml의 도쿄 값: 도쿄메트로 IC 운임과 2026-04-20 택시 운임(출처는 그 파일)."""
     tokyo = EngineCity.model_validate(read_city_fares(CITY_FARES)["tokyo"].model_dump())
     assert [transit_fare(km, tokyo) for km in (1, 6, 6.1, 11, 19, 27, 40, 55)] == [
-        180,
-        180,
-        210,
-        210,
-        260,
-        300,
-        330,
-        330,
+        178,
+        178,
+        209,
+        209,
+        252,
+        293,
+        324,
+        324,
     ]
     assert tokyo.taxi is not None
     assert taxi_fare(1.0, tokyo.taxi) == 500

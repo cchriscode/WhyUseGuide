@@ -5,8 +5,6 @@
 순환선은 출발점이 반대편인 두 패턴을 배차 간격의 두 배로 엇갈려 돌려, 어느 구간이든 한 열차로 갈 수 있게 한다.
 """
 
-import csv
-import io
 import json
 import math
 import tomllib
@@ -15,10 +13,10 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from whyuseguide_pipelines.gtfs_write import SERVICE_DAYS, Trip, write_feed
+
 SAME_STATION_KM = 1.5
-# GTFS calendar: 평일(월~금), 휴일(토·일). 평일에 걸린 공휴일은 calendar_dates로 휴일 쪽에 옮긴다.
-SERVICE_DAYS = {"all": "1111111", "weekday": "1111100", "holiday": "0000011"}
-WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+PUBLISHER = "WhyUseGuide approximation (estimated, not an official timetable)"
 
 
 @dataclass(frozen=True)
@@ -231,21 +229,6 @@ def headway_at(headways: list[Headway], t: float) -> int:
     return headways[-1].every_min
 
 
-def _hms(minutes: float) -> str:
-    s = round(minutes * 60)
-    return f"{s // 3600:02d}:{s // 60 % 60:02d}:{s % 60:02d}"
-
-
-@dataclass
-class Trip:
-    trip_id: str
-    route_id: str
-    service_name: str
-    service_days: str
-    headsign: str
-    stops: list[tuple[str, float]]  # (stop_id, 자정 기준 분)
-
-
 def build_trips(line: ApproxLine, stop_ids: list[str], points: list[tuple[float, float]]) -> list[Trip]:
     trips: list[Trip] = []
     n = len(stop_ids)
@@ -315,14 +298,6 @@ def build_trips(line: ApproxLine, stop_ids: list[str], points: list[tuple[float,
     return trips
 
 
-def _csv(rows: list[dict[str, str]], fields: list[str]) -> str:
-    buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=fields, lineterminator="\n")
-    writer.writeheader()
-    writer.writerows(rows)
-    return buf.getvalue()
-
-
 def build_feed(
     lines: list[ApproxLine],
     index: dict[tuple[str, str], list[tuple[float, float]]],
@@ -382,88 +357,18 @@ def build_feed(
         )
         all_trips += build_trips(line, stop_ids, points)
 
-    # 평일(월~금)에 걸린 공휴일만 예외로 둔다. 토·일 공휴일은 원래 휴일 운행이다.
-    weekday_holidays = {d for d in (holidays or set()) if valid_from <= d <= valid_to and d.weekday() < 5}
-    files = {
-        "agency.txt": _csv(
-            [
-                {
-                    "agency_id": a,
-                    "agency_name": name,
-                    "agency_url": "https://example.invalid/",
-                    "agency_timezone": region.timezone,
-                }
-                for a, name in agencies.items()
-            ],
-            ["agency_id", "agency_name", "agency_url", "agency_timezone"],
-        ),
-        "stops.txt": _csv(list(stops.values()), ["stop_id", "stop_name", "stop_lat", "stop_lon"]),
-        "routes.txt": _csv(routes, ["route_id", "agency_id", "route_long_name", "route_type", "route_color"]),
-        "calendar.txt": _csv(
-            [
-                {
-                    "service_id": sid,
-                    **dict(zip(WEEKDAYS, pattern, strict=True)),
-                    "start_date": valid_from.strftime("%Y%m%d"),
-                    "end_date": valid_to.strftime("%Y%m%d"),
-                }
-                for sid, pattern in SERVICE_DAYS.items()
-            ],
-            ["service_id", *WEEKDAYS, "start_date", "end_date"],
-        ),
-        "calendar_dates.txt": _csv(
-            [
-                {"service_id": sid, "date": d.strftime("%Y%m%d"), "exception_type": kind}
-                for d in sorted(weekday_holidays)
-                for sid, kind in (("weekday", "2"), ("holiday", "1"))
-            ],
-            ["service_id", "date", "exception_type"],
-        ),
-        "trips.txt": _csv(
-            [
-                {
-                    "route_id": t.route_id,
-                    "service_id": t.service_days,
-                    "trip_id": t.trip_id,
-                    "trip_headsign": t.headsign,
-                    "trip_short_name": t.service_name,
-                }
-                for t in all_trips
-            ],
-            ["route_id", "service_id", "trip_id", "trip_headsign", "trip_short_name"],
-        ),
-        "stop_times.txt": _csv(
-            [
-                {
-                    "trip_id": t.trip_id,
-                    "arrival_time": _hms(m),
-                    "departure_time": _hms(m),
-                    "stop_id": sid,
-                    "stop_sequence": str(i + 1),
-                }
-                for t in all_trips
-                for i, (sid, m) in enumerate(t.stops)
-            ],
-            ["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"],
-        ),
-        "translations.txt": _csv(
-            translations, ["table_name", "field_name", "language", "translation", "record_id"]
-        ),
-        "feed_info.txt": _csv(
-            [
-                {
-                    "feed_publisher_name": "WhyUseGuide approximation (estimated, not an official timetable)",
-                    "feed_publisher_url": "https://example.invalid/",
-                    "feed_lang": region.lang,
-                    "feed_start_date": valid_from.strftime("%Y%m%d"),
-                    "feed_end_date": valid_to.strftime("%Y%m%d"),
-                }
-            ],
-            ["feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_start_date", "feed_end_date"],
-        ),
-    }
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
-        for name, body in files.items():
-            zf.writestr(name, body)
+    write_feed(
+        out,
+        agencies=agencies,
+        stops=stops.values(),
+        routes=routes,
+        trips=all_trips,
+        translations=translations,
+        valid_from=valid_from,
+        valid_to=valid_to,
+        timezone=region.timezone,
+        lang=region.lang,
+        publisher=PUBLISHER,
+        holidays=holidays,
+    )
     return {"lines": len(routes), "stops": len(stops), "trips": len(all_trips)}

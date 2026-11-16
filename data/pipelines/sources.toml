@@ -111,3 +111,229 @@ refresh = "weekly"
 otp = true
 city = "tokyo"
 token_env = "ODPT_TOKEN"
+
+# 버스·수상버스: OTP 경로에만 쓴다(db = false). 주소의 date=current는 최신 판을 가리킨다.
+# CC BY 4.0 (토큰 불필요)
+
+[[source]]
+id = "taito-megurin-bus-gtfs"
+kind = "gtfs"
+url = "https://api-public.odpt.org/api/v4/files/odpt/TokyoTaitoCity/megurinCCBY40.zip?date=current"
+license = "CC BY 4.0"
+attribution = "台東区・公共交通オープンデータ協議会 (CC BY 4.0)"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+
+[[source]]
+id = "bunkyo-bguru-bus-gtfs"
+kind = "gtfs"
+url = "https://api-public.odpt.org/api/v4/files/odpt/HitachiAutomobileTransportation/AllLines.zip?date=current"
+license = "CC BY 4.0"
+attribution = "文京区・日立自動車交通・公共交通オープンデータ協議会 (CC BY 4.0)"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+
+[[source]]
+id = "chiyoda-kazaguruma-bus-gtfs"
+kind = "gtfs"
+url = "https://api-public.odpt.org/api/v4/files/odpt/HitachiAutomobileTransportation/Chiyoda_ALLLINES.zip?date=current"
+license = "CC BY 4.0"
+attribution = "千代田区・日立自動車交通・公共交通オープンデータ協議会 (CC BY 4.0)"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+
+[[source]]
+id = "kita-kbus-bus-gtfs"
+kind = "gtfs"
+url = "https://api-public.odpt.org/api/v4/files/odpt/HitachiAutomobileTransportation/KitaAllLines.zip?date=current"
+license = "CC BY 4.0"
+attribution = "北区・日立自動車交通・公共交通オープンデータ協議会 (CC BY 4.0)"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+
+[[source]]
+id = "tokyo-cruise-ferry-gtfs"
+kind = "gtfs"
+url = "https://api-public.odpt.org/api/v4/files/odpt/TokyoCruiseShip/AllLines.zip?date=current"
+license = "CC BY 4.0"
+attribution = "東京都観光汽船・公共交通オープンデータ協議会 (CC BY 4.0)"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+
+
+# ODPT 기본 라이선스 버스 (토큰 필요)
+
+[[source]]
+id = "kanto-bus-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/odpt/KantoBus/AllLines.zip?date=current"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "関東バス・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "keio-bus-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/odpt/KeioBus/AllLines.zip?date=current"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "京王バス・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "odakyu-bus-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/odpt/OdakyuBus/AIILines.zip?date=current"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "小田急バス・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "seibu-bus-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/SeibuBus/data/SeibuBus-GTFS.zip"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "西武バス・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "chuo-edobus-bus-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/odpt/TokyoChuoCity/Alldata.zip?date=current"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "中央区・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "meguro-community-bus-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/odpt/TokyuBus/tokyubus_community_MeguroCity.zip?date=current"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "目黒区・東急バス・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "ota-community-bus-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/odpt/TokyuBus/tokyubus_community_OtaCity.zip?date=current"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "大田区・東急バス・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "shinagawa-community-bus-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/odpt/TokyuBus/tokyubus_community_ShinagawaCity.zip?date=current"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "品川区・東急バス・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
+token_env = "ODPT_TOKEN"
+
+
+# 유리카모메: GTFS가 없고 역 시간표(JSON)만 있다. 아래 네 재료를 받아 build-odpt-gtfs로 GTFS를 만든다.
+
+[[source]]
+id = "yurikamome-odpt-operator"
+kind = "file"
+url = "https://api.odpt.org/api/v4/odpt:Operator?owl:sameAs=odpt.Operator:Yurikamome"
+save_as = "operator.json"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "ゆりかもめ・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "yurikamome-odpt-railway"
+kind = "file"
+url = "https://api.odpt.org/api/v4/odpt:Railway?odpt:operator=odpt.Operator:Yurikamome"
+save_as = "railway.json"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "ゆりかもめ・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "yurikamome-odpt-stations"
+kind = "file"
+url = "https://api.odpt.org/api/v4/odpt:Station?odpt:operator=odpt.Operator:Yurikamome"
+save_as = "stations.json"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "ゆりかもめ・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "yurikamome-odpt-timetables"
+kind = "file"
+url = "https://api.odpt.org/api/v4/odpt:StationTimetable?odpt:operator=odpt.Operator:Yurikamome"
+save_as = "station_timetables.json"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "ゆりかもめ・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "yurikamome-odpt-fares"
+kind = "file"
+url = "https://api.odpt.org/api/v4/odpt:RailwayFare?odpt:operator=odpt.Operator:Yurikamome"
+save_as = "fares.json"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "ゆりかもめ・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = false
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "yurikamome-train-gtfs"
+kind = "gtfs"
+url = "local:odpt-station-timetable"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "ゆりかもめ・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+inputs = { operator = "yurikamome-odpt-operator", railway = "yurikamome-odpt-railway", stations = "yurikamome-odpt-stations", timetables = "yurikamome-odpt-timetables", fares = "yurikamome-odpt-fares" }

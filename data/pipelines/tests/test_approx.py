@@ -13,7 +13,6 @@ from whyuseguide_pipelines.approx import (
     Headway,
     Region,
     Service,
-    Trip,
     build_feed,
     build_trips,
     load_lines,
@@ -23,6 +22,7 @@ from whyuseguide_pipelines.approx import (
     station_index,
 )
 from whyuseguide_pipelines.gtfs import read_network, validate_feed
+from whyuseguide_pipelines.gtfs_write import Trip
 from whyuseguide_pipelines.holidays import parse_holidays
 from whyuseguide_pipelines.sources import PIPELINES_DIR, load_sources
 
