@@ -39,7 +39,9 @@ export function compute(day: Day): DayResult {
   const addLeg = (iFrom: number, iTo: number, delay: number, parkingFee: number): number => {
     const a = points[iFrom]!;
     const b = points[iTo]!;
-    const leg = chooseLeg(a, b, planMode, transport, city, known, parkingFee);
+    const ready = t + delay;
+    const leg = chooseLeg(a, b, planMode, transport, city, known, parkingFee, ready);
+    const wait = leg.wait ?? 0;
     let brk = 0;
     if (transport === "car") {
       if (driving + leg.minutes > C.driveBreakEveryMin) {
@@ -62,10 +64,12 @@ export function compute(day: Day): DayResult {
       label: leg.label,
       delayMin: delay,
       breakMin: brk,
+      waitMin: wait,
+      depart: toHHMM(ready + wait),
     });
     move += leg.minutes;
     fare += leg.fare;
-    return leg.minutes + delay + brk;
+    return delay + wait + leg.minutes + brk;
   };
 
   day.items.forEach((item, i) => {

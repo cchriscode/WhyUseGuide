@@ -51,7 +51,11 @@ class Item(EngineModel):
 
 
 class Leg(EngineModel):
-    """알려진 구간(OTP·leg_cache). 없으면 엔진이 근사한다(§5.3)."""
+    """알려진 구간(OTP·leg_cache). 없으면 엔진이 근사한다(§5.3).
+
+    depart_at이 있으면 그 시각에 출발 준비가 된다는 가정으로 구한 시간표 결과다. 실제 출발 준비 시각이
+    다르면 엔진은 이 구간을 쓰지 않고 근사한다. wait_min = 열차 시각에 맞추려고 출발지에서 더 머무는 분.
+    """
 
     from_id: str = Field(alias="from")
     to_id: str = Field(alias="to")
@@ -63,6 +67,8 @@ class Leg(EngineModel):
     estimated: bool = False
     label: str = ""
     transfers: int = 0
+    depart_at: str | None = None
+    wait_min: int = 0
 
 
 class Delay(EngineModel):
@@ -129,6 +135,8 @@ class LegRow(EngineModel):
     label: str = ""
     delay_min: int = 0
     break_min: int = 0  # 자동차 연속 운전 휴식
+    wait_min: int = 0  # 열차 시각에 맞추려고 출발지에서 더 머무는 분
+    depart: str = ""  # 출발지를 떠나는 시각(= 출발 준비 시각 + wait_min)
 
 
 class Totals(EngineModel):

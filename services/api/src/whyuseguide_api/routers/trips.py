@@ -1,5 +1,6 @@
 """여행·일정 API (PRD §7, F-01~F-11). 시간·순서·요금은 일정 엔진이 계산하고, 여기서는 저장과 변환만 한다."""
 
+import asyncio
 import uuid
 from datetime import date, time, timedelta
 from typing import Annotated, Any, Literal
@@ -17,7 +18,7 @@ from itinerary_engine.generate import FixedBooking, GenerateInput, GenerateResul
 from itinerary_engine.models import Day as EngineDay
 from itinerary_engine.models import DayResult, Item, LegRow, Point, StopRow
 from itinerary_engine.suggest import suggest as engine_suggest
-from whyuseguide_api import bridge
+from whyuseguide_api import bridge, timed
 from whyuseguide_api.db.models import (
     City,
     ItineraryItem,
@@ -268,7 +269,7 @@ async def baseline_for(session: AsyncSession, trip: Trip, day: TripDay) -> DayRe
     ).scalar_one_or_none()
     if snap is None:
         return None
-    return compute(await engine_day(session, trip, day, _items_from(snap.items)))
+    return await timed_result(session, await engine_day(session, trip, day, _items_from(snap.items)))
 
 
 async def undo_snapshot(session: AsyncSession, day: TripDay) -> ItinerarySnapshot | None:
@@ -282,11 +283,19 @@ async def undo_snapshot(session: AsyncSession, day: TripDay) -> ItinerarySnapsho
     ).scalar_one_or_none()
 
 
+async def timed_result(session: AsyncSession, eday: EngineDay) -> DayResult:
+    """화면에 보여 줄 계산: OTP 시간표 구간(열차에 맞춘 출발 시각), 실패한 구간만 근사(§5.3)."""
+    planner = timed.planner_for(session)
+    if planner is None:
+        return compute(eday)
+    return await timed.timed_compute(eday, planner, await timed.estimated_agencies(session))
+
+
 async def render_day(
     session: AsyncSession, trip: Trip, day: TripDay, adjust: AdjustResult | None = None
 ) -> dict[str, Any]:
     items = await day_items(session, day)
-    result = compute(await engine_day(session, trip, day, items))
+    result = await timed_result(session, await engine_day(session, trip, day, items))
     return day_payload(
         day,
         result,
@@ -373,6 +382,8 @@ async def create_trip(body: TripCreate, session: Session, user: CurrentUser) -> 
         session.add(TripFixedBooking(trip_id=trip.id, place_id=fb.place_id, date=fb.date, time=_t(fb.time)))
     point = f"SRID=4326;POINT({lodging.lon} {lodging.lat})" if lodging else None
     plans: dict[str, list[dict[str, Any]]] = {m: [] for m in PLAN_MODES}
+    planner = timed.planner_for(session)
+    approx_agencies = await timed.estimated_agencies(session) if planner else frozenset[str]()
     for i, gday in enumerate(result.days):
         day = TripDay(
             trip_id=trip.id,
@@ -385,17 +396,42 @@ async def create_trip(body: TripCreate, session: Session, user: CurrentUser) -> 
         session.add(day)
         await session.flush()
         await save_items(session, day, list(gday.items))
+        modes = list(gday.plans)
+        ordered: dict[str, list[Item]] = {}
         for mode, plan in gday.plans.items():
-            order = [r.place_id for r in plan.rows if isinstance(r, StopRow)]
             by_id = {it.place_id: it for it in gday.items}
+            ordered[mode] = [by_id[r.place_id] for r in plan.rows if isinstance(r, StopRow)]
             session.add(
                 ItinerarySnapshot(
                     trip_day_id=day.id,
-                    items=items_json([by_id[p] for p in order]),
+                    items=items_json(ordered[mode]),
                     reason="generate",
                     plan_mode=mode,
                 )
             )
+        # 3안 모두 화면용으로 다시 계산: OTP 시간표 구간(열차에 맞춘 출발 시각), 실패한 구간만 근사
+        shown = await asyncio.gather(
+            *(
+                timed.timed_compute(
+                    EngineDay(
+                        date=gday.date,
+                        start=body.start_time,
+                        items=tuple(ordered[mode]),
+                        places=gen_input.places[gday.date],
+                        city=gen_input.city,
+                        plan_mode=mode,
+                        transport=gen_input.transport,
+                        start_point=lodging,
+                        end_point=lodging,
+                        day_end=body.day_end_time,
+                    ),
+                    planner,
+                    approx_agencies,
+                )
+                for mode in modes
+            )
+        )
+        for mode, plan in zip(modes, shown, strict=True):
             plans[mode].append(
                 {
                     "dayIndex": i,

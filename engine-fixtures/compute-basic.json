@@ -75,7 +75,9 @@
     "transfers": 0,
     "label": "",
     "delayMin": 0,
-    "breakMin": 0
+    "breakMin": 0,
+    "waitMin": 0,
+    "depart": "10:00"
    },
    {
     "kind": "stop",

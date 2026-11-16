@@ -229,7 +229,9 @@
      "transfers": 0,
      "label": "",
      "delayMin": 0,
-     "breakMin": 0
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "12:00"
     },
     {
      "kind": "stop",
@@ -255,7 +257,9 @@
      "transfers": 0,
      "label": "",
      "delayMin": 0,
-     "breakMin": 0
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "13:50"
     },
     {
      "kind": "stop",
@@ -281,7 +285,9 @@
      "transfers": 0,
      "label": "",
      "delayMin": 10,
-     "breakMin": 0
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "16:35"
     },
     {
      "kind": "stop",
@@ -307,7 +313,9 @@
      "transfers": 0,
      "label": "",
      "delayMin": 0,
-     "breakMin": 0
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "18:20"
     },
     {
      "kind": "stop",
@@ -333,7 +341,9 @@
      "transfers": 0,
      "label": "",
      "delayMin": 0,
-     "breakMin": 0
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "19:30"
     },
     {
      "kind": "stop",

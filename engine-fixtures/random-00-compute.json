@@ -146,7 +146,9 @@
     "transfers": 1,
     "label": "",
     "delayMin": 0,
-    "breakMin": 0
+    "breakMin": 0,
+    "waitMin": 0,
+    "depart": "11:15"
    },
    {
     "kind": "stop",
@@ -172,7 +174,9 @@
     "transfers": 1,
     "label": "",
     "delayMin": 0,
-    "breakMin": 0
+    "breakMin": 0,
+    "waitMin": 0,
+    "depart": "13:50"
    },
    {
     "kind": "stop",

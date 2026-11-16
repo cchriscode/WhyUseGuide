@@ -39,8 +39,29 @@ def test_create_returns_three_plans(client: TestClient, token: str) -> None:
     ]
     assert all(places) and not places[0] & places[1]  # 날짜마다 다른 장소
     legs = [r for d in body["plans"]["balance"]["days"] for r in d["rows"] if r["kind"] == "leg"]
-    assert all(leg["estimated"] for leg in legs)  # OTP 연동 전: 엔진 근사 → "예상"
+    assert all(leg["estimated"] for leg in legs)  # 테스트는 OTP를 끈다: 엔진 근사 → "예상"
     assert all(leg["label"] for leg in legs)
+
+
+def test_rows_follow_train_times_when_otp_is_on(client: TestClient, token: str) -> None:
+    """OTP 시간표 구간(방식 B): 가짜 시간표(매 10분 열차, 역까지 3분, 타고 15분)로 생성·조회 모두 확인."""
+    from test_timed import EveryTenMinutes
+
+    app = client.app
+    app.state.planner = EveryTenMinutes()  # type: ignore[attr-defined]
+    try:
+        body = create(client, token)
+        trip_id = body["tripId"]
+        rendered = client.get(f"/v1/trips/{trip_id}", headers=auth(token)).json()["days"][0]["day"]["rows"]
+        for rows in (body["plans"]["balance"]["days"][0]["rows"], rendered):
+            pairs = [(rows[i], rows[i + 1]) for i in range(len(rows) - 1) if rows[i]["kind"] == "leg"]
+            assert pairs
+            for leg, stop in pairs:
+                assert not leg["estimated"] and leg["depart"].endswith("7") and leg["minutes"] == 18
+                h, m = map(int, leg["depart"].split(":"))
+                assert stop["arrive"] == f"{(h * 60 + m + 18) // 60:02d}:{(m + 18) % 60:02d}"
+    finally:
+        app.state.planner = None  # type: ignore[attr-defined]
 
 
 def test_get_select_and_auth(client: TestClient, token: str) -> None:

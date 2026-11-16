@@ -4,7 +4,7 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from itinerary_engine.config import ceil_min, constants, round2
+from itinerary_engine.config import ceil_min, constants, round2, to_min
 from itinerary_engine.models import City, Leg, LegMode, PlanMode, Transport
 
 
@@ -27,6 +27,7 @@ class RouteLeg:
     estimated: bool
     transfers: int = 0
     label: str = ""
+    wait: int = 0  # 출발지에서 더 머무는 분(시간표 구간만)
 
 
 def straight_km(a: Endpoint, b: Endpoint) -> float:
@@ -93,7 +94,7 @@ def _transit(km: float, transfers: int, access_km: float, city: City) -> RouteLe
     return RouteLeg("transit", minutes, transit_fare(km, city), km, True, transfers)
 
 
-def _taxi(km: float, city: City) -> RouteLeg:
+def taxi_leg(km: float, city: City) -> RouteLeg:
     base, per_km = constants()["approx"]["taxi"]
     return RouteLeg("taxi", ceil_min(base + per_km * km), taxi_fare(km, city), km, True)
 
@@ -130,7 +131,7 @@ def approx_leg(
     # 빠르게: 대중교통 최단. 걷는 게 더 빠르면 걷고, 환승 구간이 길면 택시와 비교한다.
     best = walk if walk.minutes <= transit.minutes else transit
     if best is transit and transit.transfers >= 1 and km > c["taxiCompareKm"]:
-        taxi = _taxi(km, city)
+        taxi = taxi_leg(km, city)
         if taxi.minutes < transit.minutes:
             best = taxi
     return best
@@ -144,8 +145,12 @@ def choose_leg(
     city: City,
     known: dict[tuple[str, str, PlanMode], Leg],
     parking_fee: int = 0,
+    ready: int | None = None,
 ) -> RouteLeg:
+    """ready = 출발 준비 시각(분). 시간표 구간(depart_at 있음)은 ready가 같을 때만 쓴다."""
     leg = known.get((a.id, b.id, plan_mode))
-    if leg is not None:
-        return RouteLeg(leg.mode, leg.minutes, leg.fare, leg.km, leg.estimated, leg.transfers, leg.label)
+    if leg is not None and (leg.depart_at is None or (ready is not None and to_min(leg.depart_at) == ready)):
+        return RouteLeg(
+            leg.mode, leg.minutes, leg.fare, leg.km, leg.estimated, leg.transfers, leg.label, leg.wait_min
+        )
     return approx_leg(a, b, plan_mode, transport, city, parking_fee)

@@ -19,9 +19,9 @@ export function round2(x: number): number {
   return Math.floor(x * 100 + 0.5) / 100;
 }
 
-/** 분 올림. 부동소수점 오차로 정수 바로 위가 올림되지 않게 작은 여유를 둔다. */
+/** 분 올림. 부동소수점 오차로 정수 바로 위가 올림되지 않게 작은 여유를 둔다. 0은 -0이 아닌 0으로. */
 export function ceilMin(x: number): number {
-  return Math.ceil(x - 1e-9);
+  return Math.ceil(x - 1e-9) + 0;
 }
 
 export function ceilTo(x: number, step: number): number {

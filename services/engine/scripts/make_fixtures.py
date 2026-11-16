@@ -141,6 +141,23 @@ def hand_cases() -> list[tuple[str, str, dict[str, Any]]]:
             },
         )
     )
+    cases.append(
+        (
+            "compute-timed-leg",
+            "compute",
+            {
+                "day": day(
+                    [{"placeId": "A"}, {"placeId": "B"}, {"placeId": "C"}],
+                    [place("A"), place("B"), place("C")],
+                    [
+                        {**leg("A", "B", 18), "departAt": "10:20", "waitMin": 7},
+                        {**leg("B", "C", 18), "departAt": "11:00", "waitMin": 3},
+                    ],
+                    delay={"gap": 1, "minutes": 20},
+                )
+            },
+        )
+    )
     lodging = {"startPoint": {"lat": 35.69, "lon": 139.70}, "endPoint": {"lat": 35.69, "lon": 139.70}}
     cases.append(
         (

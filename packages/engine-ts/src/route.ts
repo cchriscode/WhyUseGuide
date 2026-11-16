@@ -1,5 +1,5 @@
 // 구간 경로 선택 (PRD §5.3). itinerary_engine.route와 같은 규칙·같은 반올림.
-import { C, ceilMin, round2 } from "./config";
+import { C, ceilMin, round2, toMin } from "./config";
 import type { City, Leg, LegMode, PlanMode, Transport } from "./types";
 
 export interface Endpoint {
@@ -18,6 +18,8 @@ export interface RouteLeg {
   estimated: boolean;
   transfers: number;
   label: string;
+  /** 출발지에서 더 머무는 분(시간표 구간만). */
+  wait?: number;
 }
 
 const DEFAULT_TAXI = { base: 500, baseKm: 1.0, perKm: 400 };
@@ -127,9 +129,11 @@ export function chooseLeg(
   city: City,
   known: Map<string, Leg>,
   parkingFee = 0,
+  ready?: number,
 ): RouteLeg {
+  // 시간표 구간(departAt 있음)은 출발 준비 시각이 같을 때만 쓴다.
   const leg = known.get(legKey(a.id, b.id, planMode));
-  if (leg) {
+  if (leg && (leg.departAt == null || (ready !== undefined && toMin(leg.departAt) === ready))) {
     return {
       mode: leg.mode,
       minutes: leg.minutes,
@@ -138,6 +142,7 @@ export function chooseLeg(
       estimated: leg.estimated ?? false,
       transfers: leg.transfers ?? 0,
       label: leg.label ?? "",
+      wait: leg.waitMin ?? 0,
     };
   }
   return approxLeg(a, b, planMode, transport, city, parkingFee);

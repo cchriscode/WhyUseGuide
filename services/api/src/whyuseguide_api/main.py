@@ -11,6 +11,7 @@ from whyuseguide_api import errors
 from whyuseguide_api.config import Settings
 from whyuseguide_api.health import build_checks, run_checks
 from whyuseguide_api.routers import auth, catalog, ratings, trips
+from whyuseguide_api.timed import OtpPlanner
 
 
 @asynccontextmanager
@@ -19,9 +20,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
     app.state.sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
     redis = Redis.from_url(settings.redis_url)
-    async with httpx.AsyncClient(timeout=settings.health_timeout_s) as http:
+    async with (
+        httpx.AsyncClient(timeout=settings.health_timeout_s) as http,
+        httpx.AsyncClient(timeout=settings.otp_timeout_s) as otp,
+    ):
         if not hasattr(app.state, "checks"):
             app.state.checks = build_checks(settings, engine, redis, http)
+        app.state.planner = OtpPlanner(otp, settings.otp_url) if settings.otp_timed_legs else None
         yield
     await redis.aclose()
     await engine.dispose()

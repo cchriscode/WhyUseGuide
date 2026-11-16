@@ -33,7 +33,8 @@ def compute(day: Day) -> DayResult:
     def add_leg(i_from: int, i_to: int, delay: int, parking_fee: int) -> int:
         nonlocal move, fare, driving
         a, b = points[i_from], points[i_to]
-        leg = choose_leg(a, b, day.plan_mode, day.transport, day.city, known, parking_fee)
+        ready = t + delay
+        leg = choose_leg(a, b, day.plan_mode, day.transport, day.city, known, parking_fee, ready)
         brk = 0
         if day.transport == "car":
             if driving + leg.minutes > c["driveBreakEveryMin"]:
@@ -54,11 +55,13 @@ def compute(day: Day) -> DayResult:
                 label=leg.label,
                 delay_min=delay,
                 break_min=brk,
+                wait_min=leg.wait,
+                depart=to_hhmm(ready + leg.wait),
             )
         )
         move += leg.minutes
         fare += leg.fare
-        return leg.minutes + delay + brk
+        return delay + leg.wait + leg.minutes + brk
 
     for i, item in enumerate(day.items):
         place = day.places[item.place_id]

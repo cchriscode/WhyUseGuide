@@ -203,7 +203,8 @@ def db() -> Iterator[Engine]:
 @pytest.fixture
 def client(db: Engine) -> Iterator[TestClient]:
     assert DB_URL
-    with TestClient(create_app(Settings(database_url=DB_URL))) as c:
+    # OTP는 끈다: 로컬에 OTP가 떠 있는지에 따라 결과가 달라지지 않게(시간표 구간은 test_timed.py)
+    with TestClient(create_app(Settings(database_url=DB_URL, otp_timed_legs=False))) as c:
         yield c
 
 

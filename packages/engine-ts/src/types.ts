@@ -49,6 +49,10 @@ export interface Leg {
   estimated?: boolean;
   label?: string;
   transfers?: number;
+  /** 이 출발 준비 시각에 대해 구한 시간표 결과. 실제 출발 준비 시각이 다르면 쓰지 않고 근사한다. */
+  departAt?: string | null;
+  /** 열차 시각에 맞추려고 출발지에서 더 머무는 분. */
+  waitMin?: number;
 }
 
 export interface City {
@@ -105,6 +109,8 @@ export interface LegRow {
   label: string;
   delayMin: number;
   breakMin: number;
+  waitMin: number;
+  depart: string;
 }
 
 export interface Totals {

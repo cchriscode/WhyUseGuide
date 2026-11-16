@@ -100,6 +100,36 @@ def test_delay_shifts_following_stops_or_is_absorbed() -> None:
     assert stops(fixed)[1].start == "11:00"  # 20분 지연이 예약 전 대기에 흡수된다
 
 
+def test_timed_leg_departs_with_the_train() -> None:
+    """시간표 구간: 출발 준비 시각이 같으면 열차에 맞춰 더 머문 뒤 출발, 다르면 근사한다."""
+    timed = {**leg("A", "B", 18), "departAt": "10:00", "waitMin": 7}
+    late_timed = {**leg("B", "C", 18), "departAt": "11:00", "waitMin": 3}  # 실제 준비 시각은 11:25
+    result = compute(
+        day(
+            [{"placeId": "A"}, {"placeId": "B"}, {"placeId": "C"}],
+            [place("A"), place("B"), place("C")],
+            [timed, late_timed],
+        )
+    )
+    legs = [r for r in result.rows if isinstance(r, LegRow)]
+    assert (legs[0].depart, legs[0].wait_min, legs[0].minutes) == ("10:07", 7, 18)
+    assert stops(result)[1].arrive == "10:25"
+    assert (legs[1].depart, legs[1].wait_min, legs[1].minutes) == ("11:25", 0, 0)  # 같은 좌표라 근사 도보 0분
+    assert result.totals.move_min == 18  # 더 머무는 시간은 이동 시간이 아니다
+
+    delayed = compute(
+        day(
+            [{"placeId": "A"}, {"placeId": "B"}],
+            [place("A"), place("B")],
+            [{**timed, "departAt": "10:20"}],
+            delay={"gap": 1, "minutes": 20},
+        )
+    )
+    first = [r for r in delayed.rows if isinstance(r, LegRow)][0]
+    assert (first.depart, first.wait_min) == ("10:27", 7)  # 지연 20분 뒤 준비 → 7분 더 기다려 출발
+    assert stops(delayed)[1].arrive == "10:45"
+
+
 def test_lodging_start_and_end() -> None:
     places = [place("A")]
     legs = [leg("@start", "A", 20), leg("A", "@end", 30)]

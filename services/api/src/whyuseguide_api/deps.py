@@ -17,8 +17,10 @@ TOKEN_TTL = timedelta(days=30)  # PRD §10 보안: 토큰 만료 30일
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
+    """DB 세션. OTP 질의 객체도 실어 둔다(timed.planner_for로 꺼낸다)."""
     maker: async_sessionmaker[AsyncSession] = request.app.state.sessionmaker
     async with maker() as session:
+        session.info["planner"] = getattr(request.app.state, "planner", None)
         yield session
 
 
