@@ -21,6 +21,12 @@
    | OTP 질의문·응답 해석 | `services/api/src/whyuseguide_api/otp.py` |
    | 노선망 SQL(환승 가능 노선, 가까운 역) | `whyuseguide_api/network.py` |
    | 데이터 출처·라이선스 | `data/pipelines/sources.toml` |
+   | 도시별 근사 운임(출처·확인일 포함) | `data/pipelines/city_fares.toml` → `wug-data load-fares` |
+   | 근사 노선과 그 지역 값(영역, 시간대, 원자료 출처) | `data/pipelines/approx_lines.toml` |
+   | 장소 유형·식사 유형, 평가 반영 수치 | `constants.json`의 `placeTypes`·`mealTypes`·`feedback` |
+   | 평가 태그 코드 | `itinerary_engine.feedback.RatingTag` |
+   | API 응답 모양 | `whyuseguide_api/itinerary.py`의 응답 모델(`DayOut` 등) |
+   | 테스트 입력 도우미·픽스처 위치 | 엔진 `itinerary_engine/fixtures.py`, 파이프라인 `tests/support.py`, API `tests/conftest.py` |
    | 접속 주소·시간 제한 등 실행 설정 | `whyuseguide_api/config.py` `Settings` (저장소 루트 `.env`) |
    | 도시별 값(시간대, 운임표) | DB `cities` |
 
@@ -29,6 +35,7 @@
 4. **오류를 조용히 넘기지 않는다.**
    - 외부 호출(OTP, 내려받기)은 시간 제한을 두고, 실패하면 `logging.getLogger(__name__)`으로 남긴 뒤 대체 동작을 하거나 멈춥니다.
    - `except`는 구체적인 예외만 잡습니다. 잡았으면 기록하거나 다시 던집니다.
+   - 숫자·요금·날짜처럼 바깥 세상의 값은 기억이 아니라 공식 자료로 확인하고, 출처와 확인일을 값 옆에 적습니다(택시 운임이 개정 전 값으로 박혀 있었습니다).
    - API 응답은 `errors.py` 형식만 씁니다. 내부 예외 문구(주소·SQL)는 응답에 싣지 않고 로그에만 남깁니다.
    - 값이 없을 때 0이나 빈 값으로 계산이 계속되면 틀린 결과가 그대로 나갑니다. 그런 자리에는 검증이나 경고를 둡니다.
    - 실패 경로 테스트는 기대한 이유로 통과하는지 확인합니다(예: 요청이 실제로 나갔는지).

@@ -46,7 +46,7 @@ def test_replace_prefers_same_type() -> None:
     ids = ["A", "B", "C", "P", "Q"]
     d = day([{"placeId": "A"}, {"placeId": "B"}, {"placeId": "C"}], places, all_legs(ids, 10))
     pp = p("P", type="cafe", rating=4.0)
-    qq = p("Q", type="museum", rating=4.0)
+    qq = p("Q", type="박물관", rating=4.0)
     options = suggest(d, "replace", [qq, pp], position=1)
     assert [o.place_id for o in options] == ["P", "Q"]
     assert options[0].same_type and "비슷한 곳" in options[0].badges

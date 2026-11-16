@@ -1,19 +1,17 @@
 import json
-from pathlib import Path
 
 import pytest
 from builders import day, leg, place, stops
 
 from itinerary_engine.compute import compute
 from itinerary_engine.config import constants
+from itinerary_engine.fixtures import SHARED_CONSTANTS
 from itinerary_engine.models import City, FareBand, LegRow, TaxiFare
 from itinerary_engine.route import Endpoint, approx_leg, line_choice, route_km
 
-REPO = Path(__file__).resolve().parents[3]
-
 
 def test_constants_match_shared_file() -> None:
-    shared = json.loads((REPO / "packages/engine-config/constants.json").read_text(encoding="utf-8"))
+    shared = json.loads(SHARED_CONSTANTS.read_text(encoding="utf-8"))
     assert constants() == shared
 
 

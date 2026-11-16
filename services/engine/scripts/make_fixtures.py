@@ -9,12 +9,12 @@ Python·TS 두 구현이 같은 입력에 같은 결과를 내는지 확인하�
 import json
 import random
 import shutil
-from pathlib import Path
 from typing import Any
 
-from itinerary_engine.fixtures import run
+from itinerary_engine.fixtures import FIXTURES_DIR, all_legs, leg, place, run
+from itinerary_engine.fixtures import day_input as day
 
-OUT = Path(__file__).resolve().parents[3] / "engine-fixtures"
+OUT = FIXTURES_DIR
 
 CITY = {
     "lineLinks": [["G", "M"], ["M", "H"], ["H", "A"], ["Y", "G"], ["Y", "M"], ["Y", "H"]],
@@ -29,39 +29,6 @@ CITY = {
 }
 LINES = ["G", "M", "H", "A", "Y", "O"]
 TYPES = ["박물관", "신사·사찰", "맛집", "공원", "카페 거리", "전망", "시장"]
-
-
-def place(pid: str, **kw: Any) -> dict[str, Any]:
-    return {"id": pid, "name": pid, "type": "박물관", "lat": 35.68, "lon": 139.70, "defaultStayMin": 60, **kw}
-
-
-def leg(a: str, b: str, minutes: int, mode: str = "transit") -> dict[str, Any]:
-    return {
-        "from": a,
-        "to": b,
-        "planMode": "balance",
-        "mode": mode,
-        "minutes": minutes,
-        "fare": 180,
-        "km": 3.0,
-    }
-
-
-def all_legs(ids: list[str], minutes: int) -> list[dict[str, Any]]:
-    return [leg(a, b, minutes) for a in ids for b in ids if a != b]
-
-
-def day(
-    items: list[dict[str, Any]], places: list[dict[str, Any]], legs: list[dict[str, Any]], **kw: Any
-) -> dict[str, Any]:
-    return {
-        "date": "2026-10-27",
-        "start": "09:00",
-        "items": items,
-        "places": {p["id"]: p for p in places},
-        "legs": legs,
-        **kw,
-    }
 
 
 def hand_cases() -> list[tuple[str, str, dict[str, Any]]]:
@@ -167,7 +134,7 @@ def hand_cases() -> list[tuple[str, str, dict[str, Any]]]:
                 "day": day(
                     [{"placeId": "A"}],
                     [place("A")],
-                    [leg("@start", "A", 20, "car"), leg("A", "@end", 30, "car")],
+                    [leg("@start", "A", 20, mode="car"), leg("A", "@end", 30, mode="car")],
                     transport="car",
                     **lodging,
                 )
@@ -182,7 +149,7 @@ def hand_cases() -> list[tuple[str, str, dict[str, Any]]]:
                 "day": day(
                     [{"placeId": "A"}, {"placeId": "B"}, {"placeId": "C"}],
                     [place("A", defaultStayMin=10), place("B", defaultStayMin=10), place("C")],
-                    [leg("A", "B", 70, "car"), leg("B", "C", 70, "car")],
+                    [leg("A", "B", 70, mode="car"), leg("B", "C", 70, mode="car")],
                     transport="car",
                 )
             },

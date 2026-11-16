@@ -9,9 +9,9 @@ from typing import Any
 
 import pytest
 
-from itinerary_engine.fixtures import run
+from itinerary_engine.fixtures import FIXTURES_DIR, run
 
-FIXTURES = Path(__file__).resolve().parents[3] / "engine-fixtures"
+FIXTURES = FIXTURES_DIR
 
 
 def fixtures() -> list[Path]:
