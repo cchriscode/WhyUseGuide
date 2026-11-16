@@ -329,6 +329,8 @@ class ItinerarySnapshot(TimestampedTable):
 
 class CourseRating(TimestampedTable):
     __tablename__ = "course_ratings"
+    # 하루에 평가 하나: 다시 보내면 평가 반영(§5.6)이 두 번 되므로 막는다
+    __table_args__ = (UniqueConstraint("trip_day_id", "user_id"),)
 
     trip_day_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trip_days.id", ondelete="CASCADE"))
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))

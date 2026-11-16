@@ -1,3 +1,5 @@
+import pytest
+
 from itinerary_engine.feedback import CourseRating, apply_rating
 from itinerary_engine.generate import Prefs, Profile
 
@@ -5,9 +7,7 @@ from itinerary_engine.generate import Prefs, Profile
 def test_tags_change_prefs_and_explain() -> None:
     r = apply_rating(
         Prefs(),
-        CourseRating(
-            stars=4, tags=("이동이 길었어요", "일정이 빡빡했어요", "로컬 스팟 좋았어요", "대기 줄이 길었어요")
-        ),
+        CourseRating(stars=4, tags=("long_moves", "too_tight", "local_good", "long_queue")),
         {},
         [],
     )
@@ -24,8 +24,8 @@ def test_tags_change_prefs_and_explain() -> None:
 
 
 def test_effects_accumulate_over_days() -> None:
-    once = apply_rating(Prefs(), CourseRating(stars=4, tags=("이동이 길었어요",)), {}, []).prefs
-    twice = apply_rating(once, CourseRating(stars=4, tags=("이동이 길었어요",)), {}, []).prefs
+    once = apply_rating(Prefs(), CourseRating(stars=4, tags=("long_moves",)), {}, []).prefs
+    twice = apply_rating(once, CourseRating(stars=4, tags=("long_moves",)), {}, []).prefs
     assert twice.move_cap_factor == 0.64
 
 
@@ -40,7 +40,7 @@ def test_votes_shift_tag_weights() -> None:
 def test_low_stars_avoid_todays_types_and_bad_accuracy_requests_check() -> None:
     r = apply_rating(
         Prefs(),
-        CourseRating(stars=2, tags=("사람이 너무 많았어요",), routeAccuracy="off"),
+        CourseRating(stars=2, tags=("crowded",), routeAccuracy="off"),
         {},
         ["박물관", "맛집", "박물관"],
     )
@@ -48,3 +48,11 @@ def test_low_stars_avoid_todays_types_and_bad_accuracy_requests_check() -> None:
     assert r.prefs.crowd_avoid and r.prefs.mix_shift == 10
     assert r.verify_routes
     assert r.messages[-1] == "오늘 다닌 구간의 노선·시간을 다시 확인할게요"
+
+
+def test_unknown_tag_is_rejected_and_neutral_tags_change_nothing() -> None:
+    """모르는 태그는 조용히 무시하지 않는다. 반영 규칙이 없는 태그(동선이 효율적, 시간 안내 정확)는 그대로."""
+    with pytest.raises(ValueError, match="tags"):
+        CourseRating.model_validate({"stars": 4, "tags": ["이동이 길었어요"]})
+    r = apply_rating(Prefs(), CourseRating(stars=5, tags=("efficient_route", "accurate_times")), {}, [])
+    assert r.prefs == Prefs() and r.messages == ()

@@ -7,10 +7,11 @@ import anyio
 from fastapi import APIRouter
 from pydantic import Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from itinerary_engine.feedback import CourseRating as EngineRating
-from itinerary_engine.feedback import apply_rating
+from itinerary_engine.feedback import RatingTag, RouteAccuracy, apply_rating
 from itinerary_engine.generate import FixedBooking, Prefs, generate
 from itinerary_engine.models import PlanMode
 from whyuseguide_api import bridge, itinerary
@@ -36,11 +37,15 @@ class RatingIn(ApiModel):
     trip_id: uuid.UUID
     day_index: int = Field(ge=0)
     stars: int = Field(ge=1, le=5)
-    tags: list[str] = []
+    tags: list[RatingTag] = []  # 코드값(엔진 feedback.RatingTag)
     votes: dict[uuid.UUID, Literal[1, -1]] = {}
-    route_accuracy: Literal["ok", "bit", "off"] | None = None
+    route_accuracy: RouteAccuracy | None = None
     apply_next: bool = True
     share_anon: bool = True
+
+
+def already_rated() -> ApiError:
+    return ApiError(409, "already_rated", "이 날은 이미 평가했어요")
 
 
 @router.post("", status_code=201)
@@ -51,6 +56,12 @@ async def rate(body: RatingIn, session: Session, user: CurrentUser, planner: Pla
     in_day = {uuid.UUID(it.place_id) for it in items}
     if set(body.votes) - in_day:
         raise ApiError(422, "invalid_vote", "그날 일정에 없는 장소에는 좋아요·별로를 남길 수 없어요")
+    # 하루에 평가 하나: 다시 보내면 반영(§5.6)이 두 번 된다. 동시에 들어온 요청은 DB 유일 제약이 막는다.
+    already = await session.execute(
+        select(CourseRating.id).where(CourseRating.trip_day_id == day.id, CourseRating.user_id == user.id)
+    )
+    if already.first() is not None:
+        raise already_rated()
 
     rating = CourseRating(
         trip_day_id=day.id,
@@ -62,7 +73,11 @@ async def rate(body: RatingIn, session: Session, user: CurrentUser, planner: Pla
         share_anon=body.share_anon,
     )
     session.add(rating)
-    await session.flush()
+    try:
+        await session.flush()
+    except IntegrityError as e:
+        await session.rollback()
+        raise already_rated() from e
     for pid, vote in body.votes.items():
         session.add(CoursePlaceVote(course_rating_id=rating.id, place_id=pid, vote=vote))
 

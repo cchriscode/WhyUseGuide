@@ -231,7 +231,7 @@ def test_next_day_regeneration_keeps_lodging_and_clears_undo(
     monkeypatch.setattr(ratings, "generate", spy)
     r = client.post(
         "/v1/course-ratings",
-        json={"tripId": trip_id, "dayIndex": 0, "stars": 4, "tags": ["일정이 빡빡했어요"]},
+        json={"tripId": trip_id, "dayIndex": 0, "stars": 4, "tags": ["too_tight"]},
         headers=auth(token),
     )
     assert r.status_code == 201, r.text
@@ -253,7 +253,7 @@ def test_course_rating_updates_prefs_and_next_day(client: TestClient, token: str
             "tripId": trip_id,
             "dayIndex": 0,
             "stars": 4,
-            "tags": ["일정이 빡빡했어요"],
+            "tags": ["too_tight"],
             "votes": {first_place: 1},
             "routeAccuracy": "off",
         },
@@ -276,3 +276,21 @@ def test_course_rating_updates_prefs_and_next_day(client: TestClient, token: str
         headers=auth(token),
     )
     assert bad.status_code == 422 and bad.json()["error"]["code"] == "invalid_vote"
+
+    # 같은 날을 다시 평가하면 반영이 두 번 되지 않게 409. 선호값은 그대로다.
+    again = client.post(
+        "/v1/course-ratings",
+        json={"tripId": trip_id, "dayIndex": 0, "stars": 4, "tags": ["too_tight"]},
+        headers=auth(token),
+    )
+    assert again.status_code == 409 and again.json()["error"]["code"] == "already_rated"
+    after = client.get(f"/v1/trips/{trip_id}", headers=auth(token)).json()["days"][1]
+    assert after["version"] == nxt["version"] and len(stops(after)) == len(stops(nxt))
+
+    # 모르는 태그(예전의 한국어 문구 포함)는 조용히 무시하지 않고 422
+    unknown = client.post(
+        "/v1/course-ratings",
+        json={"tripId": trip_id, "dayIndex": 1, "stars": 4, "tags": ["일정이 빡빡했어요"]},
+        headers=auth(token),
+    )
+    assert unknown.status_code == 422 and unknown.json()["error"]["code"] == "invalid_request"
