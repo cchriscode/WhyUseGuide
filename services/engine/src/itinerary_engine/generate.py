@@ -127,8 +127,9 @@ def candidate_score(inp: GenerateInput, place: Place, profile: Profile) -> float
 # --- 3. 날짜별 묶기
 
 
-def _xy(p: Place) -> tuple[float, float]:
-    return (p.lon * math.cos(math.radians(35.68)), p.lat)
+def _xy(p: Place, mid_lat: float) -> tuple[float, float]:
+    """위·경도 → 거리 비율이 맞는 평면 좌표. 경도 간격은 위도에 따라 줄어든다(mid_lat = 후보 평균 위도)."""
+    return (p.lon * math.cos(math.radians(mid_lat)), p.lat)
 
 
 def _dist(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -270,7 +271,8 @@ def generate(inp: GenerateInput) -> GenerateResult:
     top += [pid for pid in sorted(fixed_ids) if pid not in top]
 
     # 3. 날짜별 묶기
-    clusters = kmeans({pid: _xy(available[pid]) for pid in top}, top, len(inp.dates))
+    mid_lat = sum(available[pid].lat for pid in top) / len(top)
+    clusters = kmeans({pid: _xy(available[pid], mid_lat) for pid in top}, top, len(inp.dates))
     date_cluster: dict[str, int] = {}
     used: set[int] = set()
     for date in inp.dates:

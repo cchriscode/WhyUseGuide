@@ -114,7 +114,7 @@ export function compute(day: Day): DayResult {
     });
     if (issue !== null) issues += 1;
     spend += place.costPerPerson ?? 0;
-    if (stay >= 15) driving = 0;
+    if (stay >= C.driveResetStayMin) driving = 0;
     t = end;
     endOfDay = end;
   });

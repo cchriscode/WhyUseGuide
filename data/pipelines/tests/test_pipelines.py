@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 import zipfile
 from datetime import date, timedelta
 from pathlib import Path
@@ -10,7 +11,8 @@ import pytest
 from whyuseguide_pipelines import cli
 from whyuseguide_pipelines.fetch import fetch, provenance_path
 from whyuseguide_pipelines.gtfs import validate_feed
-from whyuseguide_pipelines.sources import Source, load_sources
+from whyuseguide_pipelines.places import WIKIDATA_TYPES
+from whyuseguide_pipelines.sources import PIPELINES_DIR, Source, load_sources
 
 GOOD_FEED = {
     "agency.txt": "agency_id,agency_name,agency_url,agency_timezone\ntoei,東京都交通局,https://x,Asia/Tokyo\n",
@@ -160,3 +162,12 @@ def test_resolve_token_reads_env_file(tmp_path: Path, monkeypatch: pytest.Monkey
     assert resolve_token("WUG_TEST_TOKEN", env) == "abc"
     with pytest.raises(RuntimeError):
         resolve_token("WUG_MISSING_TOKEN", env)
+
+
+def test_wikidata_query_asks_for_exactly_the_classes_we_map() -> None:
+    """쿼리의 분류 목록과 유형 매핑은 따로 적혀 있다. 한쪽만 고치면 받고도 버리거나 영영 못 받는다."""
+    query = (PIPELINES_DIR / "queries" / "wikidata_tokyo_places.rq").read_text(encoding="utf-8")
+    values = re.search(r"VALUES \?cls \{([^}]*)\}", query)
+    assert values is not None
+    asked = {token.removeprefix("wd:") for token in values.group(1).split()}
+    assert asked == set().union(*(ids for ids, _ in WIKIDATA_TYPES))

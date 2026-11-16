@@ -3,6 +3,7 @@
 엔진은 날짜를 모른다. 여기서 그날의 영업시간·휴무를 정리한 장소, 도시 노선 정보, 추천용 태그를 만들어 넘긴다.
 """
 
+import logging
 import uuid
 from collections import defaultdict
 from datetime import date, time
@@ -22,11 +23,21 @@ def hhmm(t: time | None) -> str | None:
     return t.strftime("%H:%M") if t else None
 
 
+log = logging.getLogger(__name__)
+_warned_no_fare: set[uuid.UUID] = set()
+
+
 async def city_network(session: AsyncSession, city_id: uuid.UUID) -> EngineCity:
     rows = await session.execute(network.LINE_LINKS_SQL, network.line_links_params(city_id))
     fare: dict[str, Any] = (
         await session.execute(select(City.fare_table).where(City.id == city_id))
     ).scalar_one() or {}
+    if not fare.get("fareBands") and city_id not in _warned_no_fare:
+        # 운임표가 없으면 엔진은 대중교통 요금을 0으로 계산한다. 조용히 지나가지 않게 도시마다 한 번 알린다.
+        _warned_no_fare.add(city_id)
+        log.warning(
+            "cities.fare_table에 운임 구간(fareBands)이 없다: 대중교통 요금이 0으로 나온다 (city %s)", city_id
+        )
     return EngineCity.model_validate({"lineLinks": network.line_links(rows), **fare})
 
 

@@ -104,7 +104,7 @@ def compute(day: Day) -> DayResult:
         )
         issues += issue is not None
         spend += place.cost_per_person
-        if stay >= 15:
+        if stay >= c["driveResetStayMin"]:
             driving = 0
         t = end
         end_of_day = end

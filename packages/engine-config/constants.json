@@ -18,6 +18,7 @@
   "driveBreakEveryMin": 120,
   "driveBreakMin": 15,
   "parkMin": 10,
+  "driveResetStayMin": 15,
   "dayTripMaxMin": 120,
   "placesPerDay": { "relaxed": 4, "normal": 6, "packed": 7 },
   "meals": { "lunch": ["12:00", 60], "dinner": ["18:30", 60] },
@@ -32,6 +33,16 @@
     "transferKmMax": 0.3,
     "taxi": [8, 2.4],
     "car": { "base": 8, "cityPerKm": 2.4, "cityKm": 20, "highwayPerKm": 0.9 }
+  },
+  "feedback": {
+    "longMovesCapFactor": 0.8,
+    "tightPlaceCountDelta": -1,
+    "tightSlackMin": 10,
+    "relaxedPlaceCountDelta": 1,
+    "localMixShift": 15,
+    "crowdedMixShift": 10,
+    "voteTagWeight": 0.1,
+    "differentTypesMaxStars": 2
   },
   "candidateScore": { "taste": 0.5, "rating": 0.3, "popularity": 0.2 },
   "suggestScore": {
