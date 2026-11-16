@@ -6,6 +6,14 @@
 # headways: [시작 "HH:MM", 끝 "HH:MM", 간격(분)]. 끝이 24:00을 넘으면 "24:30"처럼 적는다.
 # facts: 각 값의 근거. "추정"은 출처 없이 정한 값이라 실측·평가로 보정해야 한다.
 
+# 이 파일이 다루는 지역. 역 위치와 공휴일을 받는 출처는 sources.toml의 id로 적는다.
+[region]
+timezone = "Asia/Tokyo"
+lang = "ja"
+bbox = [138.9, 35.0, 140.6, 36.3]  # 서, 남, 동, 북: N02에서 역을 찾을 범위(도쿄권, 1도 ≒ 90~110km)
+stations_source = "mlit-n02-2025"
+holidays_source = "cao-holidays"
+
 [[line]]
 id = "jr-yamanote"
 operator = "東日本旅客鉄道"

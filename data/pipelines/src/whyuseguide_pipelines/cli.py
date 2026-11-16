@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 from whyuseguide_api import otp
 from whyuseguide_api.config import Settings
 from whyuseguide_pipelines import benchmark
-from whyuseguide_pipelines.approx import build_feed, load_lines, station_index
+from whyuseguide_pipelines.approx import build_feed, load_lines, load_region, station_index
 from whyuseguide_pipelines.fares import load_fares, read_city_fares
 from whyuseguide_pipelines.fetch import fetch
 from whyuseguide_pipelines.gtfs import read_network, validate_feed
@@ -104,21 +104,28 @@ def cmd_load_db(sources: list[Source]) -> int:
 
 
 def cmd_build_approx(sources: list[Source]) -> int:
-    """approx_lines.toml + 국토수치정보 N02 역 위치로 근사 GTFS를 만든다."""
-    n02 = RAW_DIR / "mlit-n02-2025" / "N02-25_GML.zip"
-    holidays_csv = RAW_DIR / "cao-holidays" / "syukujitsu.csv"
-    missing = [p.name for p in (n02, holidays_csv) if not p.exists()]
+    """approx_lines.toml + 국토수치정보 N02 역 위치로 근사 GTFS를 만든다.
+
+    어느 지역인지, 역 위치·공휴일을 어느 출처에서 받는지는 approx_lines.toml의 [region]이 정한다.
+    """
+    region = load_region(APPROX_LINES)
+    registry = {s.id: s for s in load_sources()}
+    inputs = {}
+    for source_id in (region.stations_source, region.holidays_source):
+        if source_id not in registry:
+            raise SystemExit(f"approx_lines.toml [region]의 출처가 sources.toml에 없다: {source_id}")
+        inputs[source_id] = RAW_DIR / source_id / registry[source_id].filename
+    missing = [source_id for source_id, path in inputs.items() if not path.exists()]
     if missing:
-        raise SystemExit(
-            f"원자료가 없다({', '.join(missing)}): uv run wug-data fetch mlit-n02-2025 cao-holidays"
-        )
-    holidays = set(load_holidays(holidays_csv))
+        raise SystemExit(f"원자료가 없다: uv run wug-data fetch {' '.join(missing)}")
+    holidays = set(load_holidays(inputs[region.holidays_source]))
+    index = station_index(inputs[region.stations_source], region.bbox)
     lines = load_lines(APPROX_LINES)
     today = date.today()
     for s in (s for s in sources if s.local):
         out = RAW_DIR / s.id / s.filename
         valid_to = min(today.replace(year=today.year + 1), max(holidays))  # 공휴일이 공표된 날까지만
-        counts = build_feed(lines, station_index(n02), out, today, valid_to, holidays)
+        counts = build_feed(lines, index, out, today, valid_to, region, holidays)
         print(f"built {s.id}: lines={counts['lines']} stops={counts['stops']} trips={counts['trips']}")
     return 0
 

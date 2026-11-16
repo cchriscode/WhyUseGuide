@@ -15,8 +15,6 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-# N02 역 지오메트리를 찾을 범위: 도쿄권(1도 ≒ 90~110km)
-TOKYO_BBOX = (138.9, 35.0, 140.6, 36.3)  # 서, 남, 동, 북
 SAME_STATION_KM = 1.5
 # GTFS calendar: 평일(월~금), 휴일(토·일). 평일에 걸린 공휴일은 calendar_dates로 휴일 쪽에 옮긴다.
 SERVICE_DAYS = {"all": "1111111", "weekday": "1111100", "holiday": "0000011"}
@@ -68,6 +66,30 @@ def _headways(line_id: str, raw: list[list[str | int]]) -> list[Headway]:
         if not (h.start_min < h.end_min and h.every_min > 0):
             raise ValueError(f"{line_id}: bad headway {h}")
     return headways
+
+
+@dataclass(frozen=True)
+class Region:
+    """approx_lines.toml의 [region]: 이 파일이 다루는 지역의 값. 코드에 지역 값을 두지 않는다."""
+
+    timezone: str
+    lang: str
+    bbox: tuple[float, float, float, float]  # 서, 남, 동, 북: 역을 찾을 범위
+    stations_source: str  # 역 위치(국토수치정보 N02)를 받는 sources.toml id
+    holidays_source: str  # 공휴일 CSV를 받는 sources.toml id
+
+
+def load_region(path: Path) -> Region:
+    with path.open("rb") as f:
+        r = tomllib.load(f)["region"]
+    west, south, east, north = r["bbox"]
+    return Region(
+        timezone=r["timezone"],
+        lang=r["lang"],
+        bbox=(west, south, east, north),
+        stations_source=r["stations_source"],
+        holidays_source=r["holidays_source"],
+    )
 
 
 def load_lines(path: Path) -> list[ApproxLine]:
@@ -141,12 +163,19 @@ def _km(a: tuple[float, float], b: tuple[float, float]) -> float:
     return 6371.0 * 2 * math.asin(math.sqrt(h))
 
 
-def station_index(n02_zip: Path) -> dict[tuple[str, str], list[tuple[float, float]]]:
-    """(운영사, 역 이름) → 도쿄권 안의 역 지오메트리 중심점 목록 (N02 Station)."""
+def station_index(
+    n02_zip: Path, bbox: tuple[float, float, float, float]
+) -> dict[tuple[str, str], list[tuple[float, float]]]:
+    """(운영사, 역 이름) → bbox(서, 남, 동, 북) 안의 역 지오메트리 중심점 목록 (N02 Station).
+
+    파일 이름의 연도(N02-25 등)는 해마다 바뀌므로 UTF-8 폴더의 역 파일을 이름 끝으로 찾는다.
+    """
     with zipfile.ZipFile(n02_zip) as zf:
-        name = next(n for n in zf.namelist() if n.endswith("UTF-8/N02-25_Station.geojson"))
-        features = json.loads(zf.read(name))["features"]
-    west, south, east, north = TOKYO_BBOX
+        matches = [n for n in zf.namelist() if "UTF-8/" in n and n.endswith("_Station.geojson")]
+        if len(matches) != 1:
+            raise ValueError(f"{n02_zip.name}: 역 파일(UTF-8/*_Station.geojson)이 {len(matches)}개다")
+        features = json.loads(zf.read(matches[0]))["features"]
+    west, south, east, north = bbox
     index: dict[tuple[str, str], list[tuple[float, float]]] = {}
     for f in features:
         coords = f["geometry"]["coordinates"]
@@ -300,6 +329,7 @@ def build_feed(
     out: Path,
     valid_from: date,
     valid_to: date,
+    region: Region,
     holidays: set[date] | None = None,
 ) -> dict[str, int]:
     """근사 GTFS zip을 쓴다. 같은 운영사의 같은 이름 역은 노선이 달라도 정류장 하나로 둔다."""
@@ -361,7 +391,7 @@ def build_feed(
                     "agency_id": a,
                     "agency_name": name,
                     "agency_url": "https://example.invalid/",
-                    "agency_timezone": "Asia/Tokyo",
+                    "agency_timezone": region.timezone,
                 }
                 for a, name in agencies.items()
             ],
@@ -424,7 +454,7 @@ def build_feed(
                 {
                     "feed_publisher_name": "WhyUseGuide approximation (estimated, not an official timetable)",
                     "feed_publisher_url": "https://example.invalid/",
-                    "feed_lang": "ja",
+                    "feed_lang": region.lang,
                     "feed_start_date": valid_from.strftime("%Y%m%d"),
                     "feed_end_date": valid_to.strftime("%Y%m%d"),
                 }

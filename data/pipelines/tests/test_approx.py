@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import math
 import zipfile
 from datetime import date
@@ -10,19 +11,25 @@ import pytest
 from whyuseguide_pipelines.approx import (
     ApproxLine,
     Headway,
+    Region,
     Service,
     Trip,
     build_feed,
     build_trips,
     load_lines,
+    load_region,
     resolve_station,
     segment_minutes,
+    station_index,
 )
 from whyuseguide_pipelines.gtfs import read_network, validate_feed
 from whyuseguide_pipelines.holidays import parse_holidays
-from whyuseguide_pipelines.sources import PIPELINES_DIR
+from whyuseguide_pipelines.sources import PIPELINES_DIR, load_sources
 
 OP = "テスト鉄道"
+
+
+REGION = Region("Asia/Seoul", "ko", (139.0, 35.0, 140.5, 36.0), "stations", "holidays")
 
 
 def ring(n: int) -> list[tuple[float, float]]:
@@ -122,7 +129,7 @@ def test_build_feed_is_valid_gtfs(tmp_path: Path) -> None:
     line = make_line(n, loop=True, every=5)
     index = {(OP, f"駅{i}"): [p] for i, p in enumerate(ring(n))}
     out = tmp_path / "approx.gtfs.zip"
-    counts = build_feed([line], index, out, date(2026, 10, 1), date(2027, 9, 30))
+    counts = build_feed([line], index, out, date(2026, 10, 1), date(2027, 9, 30), REGION)
     assert counts["stops"] == n and counts["lines"] == 1
 
     assert validate_feed(out, date(2026, 10, 26)).ok
@@ -278,7 +285,13 @@ days = "holiday"
     out = tmp_path / "f.zip"
     # 2027-09-20(월) 경로의 날, 2027-09-25(토)는 원래 휴일이라 예외가 필요 없다
     build_feed(
-        [line], index, out, date(2027, 9, 1), date(2027, 9, 30), {date(2027, 9, 20), date(2027, 9, 25)}
+        [line],
+        index,
+        out,
+        date(2027, 9, 1),
+        date(2027, 9, 30),
+        REGION,
+        {date(2027, 9, 20), date(2027, 9, 25)},
     )
     with zipfile.ZipFile(out) as zf:
         trips = list(csv.DictReader(io.StringIO(zf.read("trips.txt").decode())))
@@ -318,3 +331,42 @@ days = "sunday"
     )
     with pytest.raises(ValueError, match="days must be"):
         load_lines(toml)
+
+
+def test_region_comes_from_the_definition_file() -> None:
+    """지역 값(시간대·언어·영역·원자료 출처)은 approx_lines.toml에서 읽고, 출처 id는 sources.toml에 있다."""
+    region = load_region(PIPELINES_DIR / "approx_lines.toml")
+    assert (region.timezone, region.lang) == ("Asia/Tokyo", "ja")
+    west, south, east, north = region.bbox
+    assert west < 139.76 < east and south < 35.68 < north  # 도쿄역이 안에 있다
+    ids = {s.id for s in load_sources()}
+    assert {region.stations_source, region.holidays_source} <= ids
+
+
+def test_feed_uses_the_region_timezone_and_language(tmp_path: Path) -> None:
+    n = 4
+    index = {(OP, f"駅{i}"): [p] for i, p in enumerate(ring(n))}
+    out = tmp_path / "approx.gtfs.zip"
+    build_feed([make_line(n, loop=False, every=10)], index, out, date(2026, 10, 1), date(2027, 9, 30), REGION)
+    with zipfile.ZipFile(out) as zf:
+        agency = list(csv.DictReader(io.StringIO(zf.read("agency.txt").decode())))
+        info = list(csv.DictReader(io.StringIO(zf.read("feed_info.txt").decode())))
+    assert {a["agency_timezone"] for a in agency} == {"Asia/Seoul"} and info[0]["feed_lang"] == "ko"
+
+
+def test_station_index_finds_the_station_file_of_any_year(tmp_path: Path) -> None:
+    """N02 파일 이름의 연도가 바뀌어도 읽는다. 영역 밖 역은 뺀다."""
+
+    def station(name: str, lon: float, lat: float) -> dict[str, object]:
+        return {
+            "geometry": {"coordinates": [[lon, lat], [lon + 0.001, lat]]},
+            "properties": {"N02_004": OP, "N02_005": name},
+        }
+
+    features = [station("안", 139.70, 35.70), station("밖", 135.50, 34.70)]
+    path = tmp_path / "n02.zip"
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("N02-31_GML/UTF-8/N02-31_Station.geojson", json.dumps({"features": features}))
+        zf.writestr("N02-31_GML/Shift-JIS/N02-31_Station.geojson", "{}")
+    index = station_index(path, REGION.bbox)
+    assert set(index) == {(OP, "안")}
