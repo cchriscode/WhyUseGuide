@@ -68,6 +68,37 @@ def test_rows_follow_train_times_when_otp_is_on(client: TestClient, token: str) 
         app.state.planner = None  # type: ignore[attr-defined]
 
 
+def test_response_shape_matches_prd_and_openapi(client: TestClient, token: str) -> None:
+    """PRD §7 응답 모양(키 이름)을 고정하고, 응답 모델이 OpenAPI에 실리는지 확인한다."""
+    body = create(client, token, lodging={"lat": 35.7101, "lon": 139.8107})
+    assert set(body) == {"tripId", "plans", "recommended"}
+    plan = body["plans"]["balance"]
+    assert set(plan) == {"summary", "days"}
+    assert set(plan["summary"]) == {"moveMin", "farePerPerson", "spendPerPerson", "issues", "ends"}
+    assert set(plan["days"][0]) == {"dayIndex", "date", "totals", "rows", "moveOver"}
+
+    trip = client.get(f"/v1/trips/{body['tripId']}", headers=auth(token)).json()
+    assert set(trip) == {"tripId", "startDate", "days", "planMode", "pace", "tastes"}
+    day = trip["days"][0]
+    assert set(day) == {"version", "dayIndex", "day", "adjust", "baseline"} and day["adjust"] is None
+    assert set(day["day"]) == {"date", "start", "curIndex", "planMode", "totals", "rows"}
+    assert set(day["baseline"]) == {"moveMin", "end"}
+    assert set(day["day"]["totals"]) == {
+        "moveMin", "farePerPerson", "spendPerPerson", "end", "issues", "overEnd"
+    }  # fmt: skip
+    leg, stop = day["day"]["rows"][0], day["day"]["rows"][1]
+    assert set(leg) == {
+        "kind", "from", "to", "mode", "minutes", "fare", "km", "estimated", "transfers", "label",
+        "delayMin", "breakMin", "waitMin", "depart",
+    }  # fmt: skip
+    assert set(stop) == {
+        "kind", "placeId", "name", "arrive", "wait", "start", "end", "stayMin", "issue", "fixedAt"
+    }  # fmt: skip
+
+    schemas = client.get("/openapi.json").json()["components"]["schemas"]
+    assert {"DayOut", "TripOut", "TripCreated", "SuggestOut", "RatingOut"} <= set(schemas)
+
+
 def test_get_select_and_auth(client: TestClient, token: str) -> None:
     trip_id = create(client, token)["tripId"]
     r = client.get(f"/v1/trips/{trip_id}", headers=auth(token))

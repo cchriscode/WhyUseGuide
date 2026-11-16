@@ -12,15 +12,15 @@ from typing import Any
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from itinerary_engine.adjust import AdjustResult
+from itinerary_engine.adjust import AdjustResult, DropSuggestion, FillGap
 from itinerary_engine.compute import compute
 from itinerary_engine.generate import FixedBooking, GeneratedDay, GenerateInput, Prefs
 from itinerary_engine.models import Day as EngineDay
-from itinerary_engine.models import DayResult, Item, LegRow, PlanMode, Point, StopRow
+from itinerary_engine.models import DayResult, Item, LegRow, PlanMode, Point, StopRow, Totals
 from whyuseguide_api import bridge, timed
 from whyuseguide_api.db.models import City, ItineraryItem, ItinerarySnapshot, Trip, TripDay
 from whyuseguide_api.errors import ApiError
-from whyuseguide_api.schemas import hhmm, to_time
+from whyuseguide_api.schemas import ApiModel, hhmm, to_time
 
 DEFAULT_PLAN_MODE: PlanMode = "balance"
 LEG_LABELS = {"walk": "도보", "transit": "대중교통", "taxi": "택시", "car": "자동차"}
@@ -56,60 +56,136 @@ async def shown(eday: EngineDay, routing: Routing | None) -> DayResult:
     return await timed.timed_compute(eday, routing.planner, routing.transit)
 
 
-# --- 응답 모양
+# --- 응답 모델 (PRD §7). 일정 행과 합계는 엔진 모델을 그대로 싣는다.
 
 
-def api_rows(result: DayResult) -> list[dict[str, Any]]:
-    """엔진 행 → API 행(PRD §7 응답). 구간 행에는 표시용 라벨을 붙인다."""
-    out: list[dict[str, Any]] = []
+class DayBody(ApiModel):
+    date: str
+    start: str
+    cur_index: int
+    plan_mode: str
+    totals: Totals
+    rows: list[StopRow | LegRow]
+
+
+class AdjustOut(ApiModel):
+    applied: bool
+    messages: list[str]
+    drop_suggestion: DropSuggestion | None
+    fill_gap: FillGap | None
+    undo_available: bool
+
+
+class BaselineOut(ApiModel):
+    move_min: int
+    end: str
+
+
+class DayOut(ApiModel):
+    """일정 하루(모든 변경 API 공통 응답)."""
+
+    version: int
+    day_index: int
+    day: DayBody
+    adjust: AdjustOut | None = None
+    baseline: BaselineOut | None = None
+
+
+class TripOut(ApiModel):
+    trip_id: str
+    start_date: str
+    days: list[DayOut]
+    plan_mode: str | None
+    pace: str
+    tastes: list[str]
+
+
+class PlanDayOut(ApiModel):
+    day_index: int
+    date: str
+    totals: Totals
+    rows: list[StopRow | LegRow]
+    move_over: bool
+
+
+class PlanSummary(ApiModel):
+    move_min: int
+    fare_per_person: int
+    spend_per_person: int
+    issues: int
+    ends: list[str]
+
+
+class PlanOut(ApiModel):
+    summary: PlanSummary
+    days: list[PlanDayOut]
+
+
+class TripCreated(ApiModel):
+    trip_id: str
+    plans: dict[PlanMode, PlanOut]
+    recommended: PlanMode
+
+
+def shown_rows(result: DayResult) -> list[StopRow | LegRow]:
+    """엔진 행 → 응답 행. 구간 행에는 표시용 라벨을 붙인다."""
+    out: list[StopRow | LegRow] = []
     for r in result.rows:
-        if isinstance(r, StopRow):
-            out.append(r.model_dump(by_alias=True, mode="json"))
-        elif isinstance(r, LegRow):
-            row = r.model_dump(by_alias=True, mode="json")
+        if isinstance(r, LegRow):
             label = r.label or LEG_LABELS[r.mode]
             if r.mode == "transit" and r.transfers and not r.label:
                 label += f" · 환승 {r.transfers}회"
-            row["label"] = label
-            out.append(row)
+            r = r.model_copy(update={"label": label})
+        out.append(r)
     return out
 
 
-def day_payload(
+def day_out(
     day: TripDay,
     result: DayResult,
     *,
     adjust: AdjustResult | None = None,
     undo_available: bool = False,
     baseline: DayResult | None = None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "version": day.version,
-        "dayIndex": day.day_index,
-        "day": {
-            "date": day.date.isoformat(),
-            "start": hhmm(day.start_time),
-            "curIndex": day.cur_index,
-            "planMode": day.plan_mode,
-            "totals": result.totals.model_dump(by_alias=True, mode="json"),
-            "rows": api_rows(result),
-        },
-        "adjust": None,
-        "baseline": None,
-    }
-    if adjust is not None:
-        payload["adjust"] = {
-            "applied": adjust.applied,
-            "messages": list(adjust.messages),
-            "dropSuggestion": adjust.drop_suggestion.model_dump(by_alias=True)
-            if adjust.drop_suggestion
-            else None,
-            "fillGap": adjust.fill_gap.model_dump(by_alias=True) if adjust.fill_gap else None,
-            "undoAvailable": undo_available,
-        }
-    if baseline is not None:
-        payload["baseline"] = {"moveMin": baseline.totals.move_min, "end": baseline.totals.end}
-    return payload
+) -> DayOut:
+    return DayOut(
+        version=day.version,
+        day_index=day.day_index,
+        day=DayBody(
+            date=day.date.isoformat(),
+            start=hhmm(day.start_time),
+            cur_index=day.cur_index,
+            plan_mode=day.plan_mode,
+            totals=result.totals,
+            rows=shown_rows(result),
+        ),
+        adjust=AdjustOut(
+            applied=adjust.applied,
+            messages=list(adjust.messages),
+            drop_suggestion=adjust.drop_suggestion,
+            fill_gap=adjust.fill_gap,
+            undo_available=undo_available,
+        )
+        if adjust is not None
+        else None,
+        baseline=BaselineOut(move_min=baseline.totals.move_min, end=baseline.totals.end)
+        if baseline is not None
+        else None,
+    )
+
+
+def plan_out(days: list[PlanDayOut]) -> PlanOut:
+    """이동 방식 하나의 안: 날짜별 일정과 합계."""
+    return PlanOut(
+        summary=PlanSummary(
+            move_min=sum(d.totals.move_min for d in days),
+            fare_per_person=sum(d.totals.fare_per_person for d in days),
+            spend_per_person=sum(d.totals.spend_per_person for d in days),
+            issues=sum(d.totals.issues for d in days),
+            ends=[d.totals.end for d in days],
+        ),
+        days=days,
+    )
 
 
 # --- DB 읽기·쓰기
@@ -307,10 +383,10 @@ async def render_day(
     trip: Trip,
     day: TripDay,
     adjust: AdjustResult | None = None,
-) -> dict[str, Any]:
+) -> DayOut:
     items = await day_items(session, day)
     result = await shown(await engine_day(session, trip, day, items), routing)
-    return day_payload(
+    return day_out(
         day,
         result,
         adjust=adjust,
@@ -319,15 +395,15 @@ async def render_day(
     )
 
 
-async def trip_payload(session: AsyncSession, routing: Routing | None, trip: Trip) -> dict[str, Any]:
+async def trip_out(session: AsyncSession, routing: Routing | None, trip: Trip) -> TripOut:
     days = (
         await session.execute(select(TripDay).where(TripDay.trip_id == trip.id).order_by(TripDay.day_index))
     ).scalars()
-    return {
-        "tripId": str(trip.id),
-        "startDate": trip.start_date.isoformat(),
-        "days": [await render_day(session, routing, trip, d) for d in days],
-        "planMode": trip.plan_mode,
-        "pace": trip.pace,
-        "tastes": list(trip.tastes),
-    }
+    return TripOut(
+        trip_id=str(trip.id),
+        start_date=trip.start_date.isoformat(),
+        days=[await render_day(session, routing, trip, d) for d in days],
+        plan_mode=trip.plan_mode,
+        pace=trip.pace,
+        tastes=list(trip.tastes),
+    )

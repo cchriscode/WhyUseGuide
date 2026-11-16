@@ -6,7 +6,7 @@
 import asyncio
 import uuid
 from datetime import date, timedelta
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 import anyio
 from fastapi import APIRouter, Body
@@ -25,6 +25,7 @@ from itinerary_engine.generate import (
 )
 from itinerary_engine.models import Day as EngineDay
 from itinerary_engine.models import DayResult, Item, PlanMode, Point
+from itinerary_engine.suggest import SuggestOption
 from itinerary_engine.suggest import suggest as engine_suggest
 from whyuseguide_api import bridge, itinerary
 from whyuseguide_api.db.models import (
@@ -38,7 +39,15 @@ from whyuseguide_api.db.models import (
 )
 from whyuseguide_api.deps import CurrentUser, Planner, Session
 from whyuseguide_api.errors import ApiError
-from whyuseguide_api.itinerary import DEFAULT_PLAN_MODE, Routing, SnapshotReason
+from whyuseguide_api.itinerary import (
+    DEFAULT_PLAN_MODE,
+    DayOut,
+    PlanDayOut,
+    Routing,
+    SnapshotReason,
+    TripCreated,
+    TripOut,
+)
 from whyuseguide_api.schemas import HHMM, ApiModel, to_time
 
 router = APIRouter(prefix="/v1/trips", tags=["trips"])
@@ -99,13 +108,25 @@ class DayPatch(ApiModel):
     client_version: int
 
 
+SuggestMode = Literal["replace", "between", "fill"]
+
+
 class SuggestIn(ApiModel):
-    mode: Literal["replace", "between", "fill"]
+    mode: SuggestMode
     position: int | None = None
 
 
 class CheckinIn(ApiModel):
     position: int = Field(ge=0)
+
+
+# --- 출력
+
+
+class SuggestOut(ApiModel):
+    mode: SuggestMode
+    title: str
+    options: list[SuggestOption]
 
 
 # --- 일정 생성
@@ -142,23 +163,11 @@ async def shown_plans(
     return dict(zip(modes, results, strict=True))
 
 
-def plan_summary(days: list[dict[str, Any]]) -> dict[str, Any]:
-    return {
-        "moveMin": sum(d["totals"]["moveMin"] for d in days),
-        "farePerPerson": sum(d["totals"]["farePerPerson"] for d in days),
-        "spendPerPerson": sum(d["totals"]["spendPerPerson"] for d in days),
-        "issues": sum(d["totals"]["issues"] for d in days),
-        "ends": [d["totals"]["end"] for d in days],
-    }
-
-
 # --- 엔드포인트
 
 
-@router.post("", status_code=201)
-async def create_trip(
-    body: TripCreate, session: Session, user: CurrentUser, planner: Planner
-) -> dict[str, Any]:
+@router.post("", status_code=201, response_model=TripCreated, response_model_by_alias=True)
+async def create_trip(body: TripCreate, session: Session, user: CurrentUser, planner: Planner) -> TripCreated:
     """여행 설정 저장 + 일정 3안 생성(F-01, F-02)."""
     city = (await session.execute(select(City).where(City.code == body.city))).scalar_one_or_none()
     if city is None:
@@ -216,7 +225,7 @@ async def create_trip(
         )
     point = f"SRID=4326;POINT({lodging.lon} {lodging.lat})" if lodging else None
     routing = await itinerary.routing_for(session, planner, city.id)
-    plans: dict[str, list[dict[str, Any]]] = {m: [] for m in PLAN_MODES}
+    plans: dict[PlanMode, list[PlanDayOut]] = {m: [] for m in PLAN_MODES}
     for i, gday in enumerate(result.days):
         day = TripDay(
             trip_id=trip.id,
@@ -232,35 +241,33 @@ async def create_trip(
         ordered = await itinerary.store_generated(session, day, gday)
         for mode, plan in (await shown_plans(routing, gen_input, gday, ordered)).items():
             plans[mode].append(
-                {
-                    "dayIndex": i,
-                    "date": gday.date,
-                    "totals": plan.totals.model_dump(by_alias=True, mode="json"),
-                    "rows": itinerary.api_rows(plan),
-                    "moveOver": gday.move_over,
-                }
+                PlanDayOut(
+                    day_index=i,
+                    date=gday.date,
+                    totals=plan.totals,
+                    rows=itinerary.shown_rows(plan),
+                    move_over=gday.move_over,
+                )
             )
     await session.commit()
-    return {
-        "tripId": str(trip.id),
-        "plans": {m: {"summary": plan_summary(plans[m]), "days": plans[m]} for m in PLAN_MODES},
-        "recommended": DEFAULT_PLAN_MODE,
-    }
+    return TripCreated(
+        trip_id=str(trip.id),
+        plans={m: itinerary.plan_out(plans[m]) for m in PLAN_MODES},
+        recommended=DEFAULT_PLAN_MODE,
+    )
 
 
-@router.get("/{trip_id}")
-async def get_trip(
-    trip_id: uuid.UUID, session: Session, user: CurrentUser, planner: Planner
-) -> dict[str, Any]:
+@router.get("/{trip_id}", response_model=TripOut, response_model_by_alias=True)
+async def get_trip(trip_id: uuid.UUID, session: Session, user: CurrentUser, planner: Planner) -> TripOut:
     trip = await itinerary.own_trip(session, user.id, trip_id)
     routing = await itinerary.routing_for(session, planner, trip.city_id)
-    return await itinerary.trip_payload(session, routing, trip)
+    return await itinerary.trip_out(session, routing, trip)
 
 
-@router.post("/{trip_id}/select-plan")
+@router.post("/{trip_id}/select-plan", response_model=TripOut, response_model_by_alias=True)
 async def select_plan(
     trip_id: uuid.UUID, body: SelectPlan, session: Session, user: CurrentUser, planner: Planner
-) -> dict[str, Any]:
+) -> TripOut:
     """3안 중 하나를 고른다. 이후 그날의 기본 이동 방식이 된다(S-02)."""
     trip = await itinerary.own_trip(session, user.id, trip_id)
     days = (
@@ -277,7 +284,7 @@ async def select_plan(
     trip.plan_mode = body.plan_mode
     await session.commit()
     routing = await itinerary.routing_for(session, planner, trip.city_id)
-    return await itinerary.trip_payload(session, routing, trip)
+    return await itinerary.trip_out(session, routing, trip)
 
 
 def apply_ops(day: TripDay, items: list[Item], ops: list[Op]) -> list[Item]:
@@ -317,17 +324,22 @@ def apply_ops(day: TripDay, items: list[Item], ops: list[Op]) -> list[Item]:
     return items
 
 
-@router.patch("/{trip_id}/days/{day_index}")
+@router.patch("/{trip_id}/days/{day_index}", response_model=DayOut, response_model_by_alias=True)
 async def patch_day(
     trip_id: uuid.UUID, day_index: int, body: DayPatch, session: Session, user: CurrentUser, planner: Planner
-) -> dict[str, Any]:
+) -> DayOut:
     """일정 변경 → 서버 재계산 + 자동 조정(F-04~F-06). 버전이 다르면 409와 최신 일정."""
     trip = await itinerary.own_trip(session, user.id, trip_id)
     day = await itinerary.get_day(session, trip, day_index, lock=True)
     routing = await itinerary.routing_for(session, planner, trip.city_id)
     if body.client_version != day.version:
         latest = await itinerary.render_day(session, routing, trip, day)
-        raise ApiError(409, "version_conflict", "다른 곳에서 일정이 바뀌었어요", {"latest": latest})
+        raise ApiError(
+            409,
+            "version_conflict",
+            "다른 곳에서 일정이 바뀌었어요",
+            {"latest": latest.model_dump(by_alias=True, mode="json")},
+        )
     for op in body.ops:
         if op.op == "insert" and op.place_id is not None:
             place = await session.get(Place, op.place_id)
@@ -354,10 +366,10 @@ async def patch_day(
     return await itinerary.render_day(session, routing, trip, day, adjust)
 
 
-@router.post("/{trip_id}/days/{day_index}/undo")
+@router.post("/{trip_id}/days/{day_index}/undo", response_model=DayOut, response_model_by_alias=True)
 async def undo(
     trip_id: uuid.UUID, day_index: int, session: Session, user: CurrentUser, planner: Planner
-) -> dict[str, Any]:
+) -> DayOut:
     """직전 자동 조정을 되돌린다(F-06)."""
     trip = await itinerary.own_trip(session, user.id, trip_id)
     day = await itinerary.get_day(session, trip, day_index, lock=True)
@@ -382,10 +394,10 @@ def suggest_position(mode: str, position: int | None, cur: int, count: int) -> i
     return position
 
 
-@router.post("/{trip_id}/days/{day_index}/suggest")
+@router.post("/{trip_id}/days/{day_index}/suggest", response_model=SuggestOut, response_model_by_alias=True)
 async def suggest(
     trip_id: uuid.UUID, day_index: int, body: SuggestIn, session: Session, user: CurrentUser
-) -> dict[str, Any]:
+) -> SuggestOut:
     """추천 후보(F-07~F-09): replace(대체) / between(사이 들르기) / fill(남는 시간)."""
     trip = await itinerary.own_trip(session, user.id, trip_id)
     day = await itinerary.get_day(session, trip, day_index)
@@ -406,14 +418,10 @@ async def suggest(
         title = f"{before} → {after} 사이"
     else:
         title = "남는 시간에 들를 곳"
-    return {
-        "mode": body.mode,
-        "title": title,
-        "options": [o.model_dump(by_alias=True, mode="json") for o in options],
-    }
+    return SuggestOut(mode=body.mode, title=title, options=options)
 
 
-@router.post("/{trip_id}/days/{day_index}/checkin")
+@router.post("/{trip_id}/days/{day_index}/checkin", response_model=DayOut, response_model_by_alias=True)
 async def checkin(
     trip_id: uuid.UUID,
     day_index: int,
@@ -421,7 +429,7 @@ async def checkin(
     session: Session,
     user: CurrentUser,
     planner: Planner,
-) -> dict[str, Any]:
+) -> DayOut:
     """도착 체크(F-11): 지금 있는 장소를 앞으로 옮긴다. 이후 자동 조정은 이 장소까지를 건드리지 않는다."""
     trip = await itinerary.own_trip(session, user.id, trip_id)
     day = await itinerary.get_day(session, trip, day_index, lock=True)

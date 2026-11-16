@@ -1,7 +1,7 @@
 """코스 평가 (PRD §7 POST /course-ratings, F-24·F-25, §5.6)."""
 
 import uuid
-from typing import Any, Literal
+from typing import Literal
 
 import anyio
 from fastapi import APIRouter
@@ -27,7 +27,7 @@ from whyuseguide_api.db.models import (
 )
 from whyuseguide_api.deps import CurrentUser, Planner, Session
 from whyuseguide_api.errors import ApiError
-from whyuseguide_api.itinerary import DEFAULT_PLAN_MODE
+from whyuseguide_api.itinerary import DEFAULT_PLAN_MODE, DayOut
 from whyuseguide_api.schemas import ApiModel, hhmm
 
 router = APIRouter(prefix="/v1/course-ratings", tags=["ratings"])
@@ -48,8 +48,15 @@ def already_rated() -> ApiError:
     return ApiError(409, "already_rated", "이 날은 이미 평가했어요")
 
 
-@router.post("", status_code=201)
-async def rate(body: RatingIn, session: Session, user: CurrentUser, planner: Planner) -> dict[str, Any]:
+class RatingOut(ApiModel):
+    messages: list[str]  # "다음 추천에 이렇게 반영돼요" 미리보기
+    prefs: Prefs
+    verify_routes: bool
+    next_day: DayOut | None
+
+
+@router.post("", status_code=201, response_model=RatingOut, response_model_by_alias=True)
+async def rate(body: RatingIn, session: Session, user: CurrentUser, planner: Planner) -> RatingOut:
     trip = await itinerary.own_trip(session, user.id, body.trip_id)
     day = await itinerary.get_day(session, trip, body.day_index)
     items = await itinerary.day_items(session, day)
@@ -109,12 +116,12 @@ async def rate(body: RatingIn, session: Session, user: CurrentUser, planner: Pla
             routing = await itinerary.routing_for(session, planner, trip.city_id)
             next_day_payload = await itinerary.render_day(session, routing, trip, next_day)
     await session.commit()
-    return {
-        "messages": list(feedback.messages),
-        "prefs": feedback.prefs.model_dump(by_alias=True),
-        "verifyRoutes": feedback.verify_routes,
-        "nextDay": next_day_payload,
-    }
+    return RatingOut(
+        messages=list(feedback.messages),
+        prefs=feedback.prefs,
+        verify_routes=feedback.verify_routes,
+        next_day=next_day_payload,
+    )
 
 
 async def regenerate_day(session: AsyncSession, trip: Trip, day: TripDay, prefs: Prefs) -> None:
