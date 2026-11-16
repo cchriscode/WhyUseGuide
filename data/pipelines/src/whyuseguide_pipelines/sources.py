@@ -8,6 +8,7 @@ REPO_ROOT = PIPELINES_DIR.parents[1]
 DEFAULT_REGISTRY = PIPELINES_DIR / "sources.toml"
 KOREAN_NAMES = PIPELINES_DIR / "names_ko.toml"
 APPROX_LINES = PIPELINES_DIR / "approx_lines.toml"
+CITY_FARES = PIPELINES_DIR / "city_fares.toml"
 RAW_DIR = REPO_ROOT / "data" / "raw"
 OTP_DIR = REPO_ROOT / "infra" / "otp"
 

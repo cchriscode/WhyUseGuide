@@ -55,10 +55,17 @@ export interface Leg {
   waitMin?: number;
 }
 
+export interface TaxiFare {
+  base: number;
+  baseKm: number;
+  perKm: number;
+}
+
 export interface City {
   lineLinks?: [string, string][];
   fareBands?: { maxKm: number; fare: number }[];
-  taxi?: { base: number; baseKm: number; perKm: number };
+  /** 없으면 택시를 후보로 쓰지 않는다. */
+  taxi?: TaxiFare | null;
   fuelPerKm?: number;
 }
 

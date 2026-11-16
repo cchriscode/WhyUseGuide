@@ -6,7 +6,7 @@ from builders import day, leg, place, stops
 
 from itinerary_engine.compute import compute
 from itinerary_engine.config import constants
-from itinerary_engine.models import City, FareBand, LegRow
+from itinerary_engine.models import City, FareBand, LegRow, TaxiFare
 from itinerary_engine.route import Endpoint, approx_leg, line_choice, route_km
 
 REPO = Path(__file__).resolve().parents[3]
@@ -229,10 +229,14 @@ def test_station_distance_when_unknown_or_far() -> None:
 
 
 def test_fast_mode_takes_taxi_for_long_transfers() -> None:
-    city = City(line_links=(("L1", "L2"),), fare_bands=CITY.fare_bands)
+    no_taxi = City(line_links=(("L1", "L2"),), fare_bands=CITY.fare_bands)
+    city = no_taxi.model_copy(update={"taxi": TaxiFare(base=500, base_km=1.0, per_km=431)})
     a, b = ep("a", 139.70, {"L1": 0.1}), ep("b", 139.70 + at_km(8.0), {"L2": 0.3})
     r = approx_leg(a, b, "fast", "transit", city)
     assert (r.mode, r.minutes) == ("taxi", 28)  # 8 + 2.4 × 8 = 27.2 → 28 < 대중교통 42
+    assert (r.km, r.fare) == (7.99, 500 + 3013)  # 1km까지 500엔 + 6.99km × 431엔(올림)
+    # 택시 운임이 없는 도시는 택시를 후보로 쓰지 않는다(기본 운임을 지어내지 않는다)
+    assert approx_leg(a, b, "fast", "transit", no_taxi).mode == "transit"
     near = ep("c", 139.70 + at_km(5.0), {"L2": 0.3})
     assert approx_leg(a, near, "fast", "transit", city).mode == "transit"  # 6km 이하는 비교하지 않는다
 

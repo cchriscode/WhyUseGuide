@@ -29,6 +29,7 @@ curl http://localhost:8000/health   # db·redis·otp 모두 ok면 200
 ```bash
 (cd services/api && uv run alembic upgrade head)   # 스키마 + 일본·도쿄 기본 행
 uv run wug-data fetch && uv run wug-data load-db   # 역·노선 적재 (data/pipelines/README.md)
+uv run wug-data load-fares                         # 도시별 근사 운임 (data/pipelines/city_fares.toml)
 uv run wug-data stage-otp                          # GTFS를 OTP 입력으로 넣은 뒤 그래프 다시 빌드
 ```
 

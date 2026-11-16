@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from itinerary_engine.config import ceil_min, constants, round2, to_min
-from itinerary_engine.models import City, Leg, LegMode, PlanMode, Transport
+from itinerary_engine.models import City, Leg, LegMode, PlanMode, TaxiFare, Transport
 
 
 @dataclass(frozen=True)
@@ -76,8 +76,7 @@ def transit_fare(km: float, city: City) -> int:
     return city.fare_bands[-1].fare if city.fare_bands else 0
 
 
-def taxi_fare(km: float, city: City) -> int:
-    t = city.taxi
+def taxi_fare(km: float, t: TaxiFare) -> int:
     return t.base + max(0, math.ceil((km - t.base_km) * t.per_km - 1e-9))
 
 
@@ -94,9 +93,9 @@ def _transit(km: float, transfers: int, access_km: float, city: City) -> RouteLe
     return RouteLeg("transit", minutes, transit_fare(km, city), km, True, transfers)
 
 
-def taxi_leg(km: float, city: City) -> RouteLeg:
+def taxi_leg(km: float, fare: TaxiFare) -> RouteLeg:
     base, per_km = constants()["approx"]["taxi"]
-    return RouteLeg("taxi", ceil_min(base + per_km * km), taxi_fare(km, city), km, True)
+    return RouteLeg("taxi", ceil_min(base + per_km * km), taxi_fare(km, fare), km, True)
 
 
 def _car(km: float, city: City, parking_fee: int) -> RouteLeg:
@@ -128,10 +127,11 @@ def approx_leg(
         return walk if km <= c["walkOnlyKm"] else transit
     if plan_mode == "cheap":
         return walk if km <= c["walkCheapKm"] else transit
-    # 빠르게: 대중교통 최단. 걷는 게 더 빠르면 걷고, 환승 구간이 길면 택시와 비교한다.
+    # 빠르게: 대중교통 최단. 걷는 게 더 빠르면 걷고, 환승 구간이 길면 택시와 비교한다
+    # (택시 운임이 있는 도시만).
     best = walk if walk.minutes <= transit.minutes else transit
-    if best is transit and transit.transfers >= 1 and km > c["taxiCompareKm"]:
-        taxi = taxi_leg(km, city)
+    if best is transit and city.taxi and transit.transfers >= 1 and km > c["taxiCompareKm"]:
+        taxi = taxi_leg(km, city.taxi)
         if taxi.minutes < transit.minutes:
             best = taxi
     return best

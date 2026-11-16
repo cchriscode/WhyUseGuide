@@ -1,12 +1,12 @@
 import hashlib
 import json
 import re
-import zipfile
 from datetime import date, timedelta
 from pathlib import Path
 
 import httpx
 import pytest
+from support import make_feed
 
 from whyuseguide_pipelines import cli
 from whyuseguide_pipelines.fetch import fetch, provenance_path
@@ -24,14 +24,6 @@ GOOD_FEED = {
     "calendar.txt": "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
     "start_date,end_date\n0,1,1,1,1,1,0,0,20260314,20270312\n",
 }
-
-
-def make_feed(tmp_path: Path, files: dict[str, str]) -> Path:
-    path = tmp_path / "feed.zip"
-    with zipfile.ZipFile(path, "w") as zf:
-        for name, body in files.items():
-            zf.writestr(name, body)
-    return path
 
 
 def test_registry_loads() -> None:

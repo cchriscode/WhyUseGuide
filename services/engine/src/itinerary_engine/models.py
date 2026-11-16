@@ -87,11 +87,21 @@ class TaxiFare(EngineModel):
     per_km: int
 
 
-class City(EngineModel):
+class Fares(EngineModel):
+    """도시의 근사 운임(cities.fare_table과 같은 모양).
+
+    모르는 키는 오류로 본다(오타가 조용히 0원이 되지 않게).
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, frozen=True, extra="forbid")
+
+    fare_bands: tuple[FareBand, ...] = ()  # 대중교통 근사 운임(경로 km 구간). 없으면 0원
+    taxi: TaxiFare | None = None  # 없으면 택시를 후보로 쓰지 않는다
+    fuel_per_km: float = 0  # 자동차 유류비(경로 km당)
+
+
+class City(Fares):
     line_links: tuple[tuple[str, str], ...] = ()  # 환승할 수 있는 노선 쌍
-    fare_bands: tuple[FareBand, ...] = ()  # 대중교통 근사 운임(경로 km 구간)
-    taxi: TaxiFare = TaxiFare(base=500, base_km=1.0, per_km=400)
-    fuel_per_km: float = 0
 
 
 class Day(EngineModel):

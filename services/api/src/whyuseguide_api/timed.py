@@ -145,7 +145,8 @@ class OtpPlanner:
         모든 방식: 대중교통 경로가 하나도 없으면 OTP가 걷는 게 낫다고 할 때만 걷고, 아니면 None → 엔진 근사
             ("예상"). 근처에 역이 없거나(NO_STOPS_IN_RANGE) 그 시각에 다니는 버스가 없을 때 OTP는 몇 시간
             걷는 경로를 내는데, 데이터 공백이라 쓰지 않는다.
-        빠르게: 환승이 있고 경로 km가 TAXI_CMP_KM를 넘으면 근사 택시와 비교해 일찍 도착하는 쪽.
+        빠르게: 환승이 있고 경로 km가 TAXI_CMP_KM를 넘으면 근사 택시와 비교해 일찍 도착하는 쪽
+            (택시 운임이 있는 도시만).
         """
         c = constants()
         km = route_km(a, b)
@@ -165,8 +166,8 @@ class OtpPlanner:
         leg = to_leg(best, a, b, plan_mode, ready, ready_ms(date, ready, transit.tz), city)
         if otp.agency_names(best) & transit.estimated_agencies:
             leg = leg.model_copy(update={"estimated": True})
-        if plan_mode == "fast" and leg.transfers >= 1 and km > c["taxiCompareKm"]:
-            taxi = taxi_leg(km, city)
+        if plan_mode == "fast" and city.taxi and leg.transfers >= 1 and km > c["taxiCompareKm"]:
+            taxi = taxi_leg(km, city.taxi)
             if taxi.minutes < leg.wait_min + leg.minutes:
                 return Leg.model_validate(
                     {

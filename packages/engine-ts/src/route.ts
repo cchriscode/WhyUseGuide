@@ -1,6 +1,6 @@
 // 구간 경로 선택 (PRD §5.3). itinerary_engine.route와 같은 규칙·같은 반올림.
 import { C, ceilMin, round2, toMin } from "./config";
-import type { City, Leg, LegMode, PlanMode, Transport } from "./types";
+import type { City, Leg, LegMode, PlanMode, TaxiFare, Transport } from "./types";
 
 export interface Endpoint {
   id: string;
@@ -21,8 +21,6 @@ export interface RouteLeg {
   /** 출발지에서 더 머무는 분(시간표 구간만). */
   wait?: number;
 }
-
-const DEFAULT_TAXI = { base: 500, baseKm: 1.0, perKm: 400 };
 
 export function straightKm(a: Endpoint, b: Endpoint): number {
   const rad = Math.PI / 180;
@@ -65,8 +63,7 @@ export function transitFare(km: number, city: City): number {
   return bands.length ? bands[bands.length - 1]!.fare : 0;
 }
 
-export function taxiFare(km: number, city: City): number {
-  const t = city.taxi ?? DEFAULT_TAXI;
+export function taxiFare(km: number, t: TaxiFare): number {
   return t.base + Math.max(0, Math.ceil((km - t.baseKm) * t.perKm - 1e-9));
 }
 
@@ -82,9 +79,9 @@ function transit(km: number, [transfers, accessKm]: [number, number], city: City
   return { mode: "transit", minutes, fare: transitFare(km, city), km, estimated: true, transfers, label: "" };
 }
 
-function taxi(km: number, city: City): RouteLeg {
+function taxi(km: number, fare: TaxiFare): RouteLeg {
   const [base, perKm] = C.approx.taxi;
-  return { mode: "taxi", minutes: ceilMin(base! + perKm! * km), fare: taxiFare(km, city), km, estimated: true, transfers: 0, label: "" };
+  return { mode: "taxi", minutes: ceilMin(base! + perKm! * km), fare: taxiFare(km, fare), km, estimated: true, transfers: 0, label: "" };
 }
 
 function car(km: number, city: City, parkingFee: number): RouteLeg {
@@ -110,8 +107,8 @@ export function approxLeg(
   if (planMode === "cheap") return km <= C.walkCheapKm ? w : t;
   // 빠르게: 대중교통 최단. 걷는 게 더 빠르면 걷고, 환승 구간이 길면 택시와 비교한다.
   let best = w.minutes <= t.minutes ? w : t;
-  if (best === t && t.transfers >= 1 && km > C.taxiCompareKm) {
-    const x = taxi(km, city);
+  if (best === t && city.taxi && t.transfers >= 1 && km > C.taxiCompareKm) {
+    const x = taxi(km, city.taxi);
     if (x.minutes < t.minutes) best = x;
   }
   return best;

@@ -1,9 +1,9 @@
-import os
-from collections.abc import Iterator
 from typing import Any
 
 import pytest
-from sqlalchemy import Connection, create_engine, func, select, update
+from sqlalchemy import Connection, func, select, update
+from support import conn as conn
+from support import needs_db
 
 from whyuseguide_api.db.models import Place, PlaceStatus, Stop
 from whyuseguide_pipelines.gtfs import GtfsLine, GtfsStop, Network
@@ -60,23 +60,6 @@ def test_parse_merges_rows_and_picks_type() -> None:
 @pytest.mark.parametrize(("links", "level"), [(3, 1), (5, 2), (10, 3), (20, 4), (50, 5), (120, 5)])
 def test_popularity(links: int, level: int) -> None:
     assert popularity_from_sitelinks(links) == level
-
-
-DB_URL = os.environ.get("TEST_DATABASE_URL")
-needs_db = pytest.mark.skipif(
-    not DB_URL, reason="TEST_DATABASE_URL이 없으면 DB 적재 테스트는 실행하지 않는다"
-)
-
-
-@pytest.fixture
-def conn() -> Iterator[Connection]:
-    assert DB_URL
-    engine = create_engine(DB_URL)
-    with engine.connect() as c:
-        tx = c.begin()
-        yield c
-        tx.rollback()
-    engine.dispose()
 
 
 def cand(ref: str, name: str, **kw: Any) -> PlaceCandidate:

@@ -1,10 +1,8 @@
-import os
-import zipfile
-from collections.abc import Iterator
 from pathlib import Path
 
-import pytest
-from sqlalchemy import Connection, create_engine, select, update
+from sqlalchemy import Connection, select, update
+from support import conn as conn
+from support import make_feed, needs_db
 
 from whyuseguide_api.db.models import Line, NameSource, Stop, StopLine
 from whyuseguide_pipelines.gtfs import GtfsLine, GtfsStop, Network, read_network
@@ -33,14 +31,6 @@ FEED = {
 }
 
 
-def make_feed(tmp_path: Path, files: dict[str, str]) -> Path:
-    path = tmp_path / "feed.zip"
-    with zipfile.ZipFile(path, "w") as zf:
-        for name, body in files.items():
-            zf.writestr(name, body)
-    return path
-
-
 def test_read_network(tmp_path: Path) -> None:
     net = read_network(make_feed(tmp_path, FEED))
 
@@ -59,25 +49,6 @@ def test_read_network(tmp_path: Path) -> None:
 
     # 역별 노선은 실제 운행에서 뽑으므로 운행이 없는 역(S1)은 노선이 없다.
     assert net.stop_lines == {("101", "1"), ("102", "1"), ("201", "2")}
-
-
-# --- DB 적재: PostGIS가 필요하다. CI는 PostGIS 서비스와 TEST_DATABASE_URL로 실행한다.
-
-DB_URL = os.environ.get("TEST_DATABASE_URL")
-needs_db = pytest.mark.skipif(
-    not DB_URL, reason="TEST_DATABASE_URL이 없으면 DB 적재 테스트는 실행하지 않는다"
-)
-
-
-@pytest.fixture
-def conn() -> Iterator[Connection]:
-    assert DB_URL
-    engine = create_engine(DB_URL)
-    with engine.connect() as c:
-        tx = c.begin()
-        yield c
-        tx.rollback()
-    engine.dispose()
 
 
 def network(*stops: tuple[str, str], line_name: str = "浅草線") -> Network:

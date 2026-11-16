@@ -12,12 +12,21 @@ from whyuseguide_api import otp
 from whyuseguide_api.config import Settings
 from whyuseguide_pipelines import benchmark
 from whyuseguide_pipelines.approx import build_feed, load_lines, station_index
+from whyuseguide_pipelines.fares import load_fares, read_city_fares
 from whyuseguide_pipelines.fetch import fetch
 from whyuseguide_pipelines.gtfs import read_network, validate_feed
 from whyuseguide_pipelines.holidays import load_holidays
 from whyuseguide_pipelines.load import KoreanNames, apply_korean_names, load_network
 from whyuseguide_pipelines.places import load_places, load_wikidata_file
-from whyuseguide_pipelines.sources import APPROX_LINES, KOREAN_NAMES, OTP_DIR, RAW_DIR, Source, load_sources
+from whyuseguide_pipelines.sources import (
+    APPROX_LINES,
+    CITY_FARES,
+    KOREAN_NAMES,
+    OTP_DIR,
+    RAW_DIR,
+    Source,
+    load_sources,
+)
 
 
 def _select(sources: list[Source], ids: Sequence[str]) -> list[Source]:
@@ -188,12 +197,26 @@ def cmd_benchmark(sources: list[Source], city: str, pairs: int, seed: int, base:
     return 0
 
 
+def cmd_load_fares() -> int:
+    """city_fares.toml의 근사 운임을 cities.fare_table에 넣는다."""
+    fares = read_city_fares(CITY_FARES)
+    engine = create_engine(Settings().database_url)
+    with engine.begin() as conn:
+        missing = load_fares(conn, fares)
+    engine.dispose()
+    for code, fare in fares.items():
+        status = "DB에 없는 도시" if code in missing else "loaded"
+        print(f"{code}: {status} bands={len(fare.fare_bands)} taxi={fare.taxi} fuelPerKm={fare.fuel_per_km}")
+    return 1 if missing else 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="wug-data", description="WhyUseGuide 데이터 파이프라인")
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("fetch", "build-approx", "validate", "stage-otp", "load-db", "load-places"):
         p = sub.add_parser(name)
         p.add_argument("ids", nargs="*", help="sources.toml의 id (생략하면 전체)")
+    sub.add_parser("load-fares", help="도시별 근사 운임(city_fares.toml)을 DB에 넣는다")
     bench = sub.add_parser("benchmark", help="경로 정확도 벤치마크(PRD §8)")
     bench.add_argument("--city", default="tokyo")
     bench.add_argument("--pairs", type=int, default=200)
@@ -205,6 +228,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="기준일(YYYY-MM-DD). 이날 이후 첫 화요일·토요일로 잰다(기본: 오늘)",
     )
     args = parser.parse_args(argv)
+    if args.command == "load-fares":
+        return cmd_load_fares()
     if args.command == "benchmark":
         return cmd_benchmark(load_sources(), args.city, args.pairs, args.seed, args.date)
     sources = _select(load_sources(), args.ids)

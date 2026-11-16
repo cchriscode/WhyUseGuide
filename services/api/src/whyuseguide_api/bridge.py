@@ -32,13 +32,18 @@ async def city_network(session: AsyncSession, city_id: uuid.UUID) -> EngineCity:
     fare: dict[str, Any] = (
         await session.execute(select(City.fare_table).where(City.id == city_id))
     ).scalar_one() or {}
-    if not fare.get("fareBands") and city_id not in _warned_no_fare:
-        # 운임표가 없으면 엔진은 대중교통 요금을 0으로 계산한다. 조용히 지나가지 않게 도시마다 한 번 알린다.
+    city = EngineCity.model_validate({"lineLinks": network.line_links(rows), **fare})
+    if not (city.fare_bands and city.taxi) and city_id not in _warned_no_fare:
+        # 운임표가 없으면 엔진은 대중교통 요금을 0으로 계산하고 택시를 후보에서 뺀다.
+        # 조용히 지나가지 않게 도시마다 한 번 알린다(채우기: uv run wug-data load-fares).
         _warned_no_fare.add(city_id)
         log.warning(
-            "cities.fare_table에 운임 구간(fareBands)이 없다: 대중교통 요금이 0으로 나온다 (city %s)", city_id
+            "cities.fare_table이 덜 찼다(대중교통 운임 %d구간, 택시 %s): 교통비가 틀리게 나온다 (city %s)",
+            len(city.fare_bands),
+            "있음" if city.taxi else "없음",
+            city_id,
         )
-    return EngineCity.model_validate({"lineLinks": network.line_links(rows), **fare})
+    return city
 
 
 async def place_stations(
