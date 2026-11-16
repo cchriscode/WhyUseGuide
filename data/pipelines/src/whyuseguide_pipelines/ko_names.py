@@ -79,11 +79,21 @@ def _segment(seg: str, syllables: list[str], aspirate_initial: bool, tsu: str) -
             raise ValueError(f"cannot parse {rest!r}")
 
 
+_MACRONS = str.maketrans("āīūēōĀĪŪĒŌâîûêôÂÎÛÊÔ", "aiueoAIUEOaiueoAIUEO")
+
+
 def romaji_to_hangul(name: str, aspirate_initial: bool = False, tsu: str = "쓰") -> str | None:
     """'Higashi-nihombashi' → '히가시니혼바시'. 변환할 수 없으면 None.
 
     aspirate_initial=True면 첫머리도 거센소리(쿠라마에), tsu="츠"면 つ를 '츠'로 적는다(관용 표기).
+    장음 부호(ō, ū)는 표기법대로 적지 않는다. 'Oshiage<Skytree>'처럼 꺾쇠 안 부역명은 괄호로 붙인다.
     """
+    sub = re.fullmatch(r"(.+?)\s*<(.+)>", name.strip())
+    if sub:
+        main = romaji_to_hangul(sub.group(1), aspirate_initial, tsu)
+        extra = romaji_to_hangul(sub.group(2), aspirate_initial, tsu)
+        return f"{main}({extra})" if main and extra else None
+    name = name.translate(_MACRONS)
     words = []
     for word in name.strip().split():
         syllables: list[str] = []

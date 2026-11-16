@@ -67,3 +67,10 @@ def test_korean_variants(romaji: str, variants: list[str]) -> None:
 
 def test_line_variants() -> None:
     assert korean_variants("Tsukuba Line", line_name_ko) == ["쓰쿠바선", "츠쿠바선"]
+
+
+def test_macrons_and_bracketed_sub_names() -> None:
+    assert romaji_to_hangul("Misato-chūō") == "미사토추오"
+    assert romaji_to_hangul("Rokuchō") == "로쿠초"
+    assert romaji_to_hangul("Meiji-jingumae<Harajuku>") == "메이지진구마에(하라주쿠)"
+    assert romaji_to_hangul("Oshiage<SKYTREE>") is None  # 영어 단어는 names_ko.toml로

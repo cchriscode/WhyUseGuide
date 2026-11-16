@@ -6,6 +6,8 @@ import pytest
 from sqlalchemy import Connection, create_engine, func, select, update
 
 from whyuseguide_api.db.models import Place, PlaceStatus, Stop
+from whyuseguide_pipelines.gtfs import GtfsLine, GtfsStop, Network
+from whyuseguide_pipelines.load import load_network
 from whyuseguide_pipelines.places import (
     PlaceCandidate,
     load_places,
@@ -131,8 +133,12 @@ def test_load_inserts_hidden_and_keeps_verified(conn: Connection) -> None:
 
 @needs_db
 def test_nearest_stop_is_filled(conn: Connection) -> None:
+    # 빈 DB(CI)에서도 돌도록 역을 직접 넣는다. 장소 좌표 바로 옆이라 다른 역보다 가깝다.
+    stop = GtfsStop("1", None, "浅草", None, 35.7147, 139.7967, None)
+    line = GtfsLine("1", "浅草線", None, None, "test")
+    load_network(conn, "test-stops", "tokyo", Network(lines=[line], stops=[stop], stop_lines={("1", "1")}))
     load_places(conn, "test-wd", "tokyo", [cand("Q1", "浅草寺")])
     stop_name = conn.execute(
         select(Stop.name_local).join(Place, Place.nearest_stop_id == Stop.id).where(Place.source == "test-wd")
     ).scalar_one()
-    assert stop_name == "浅草"  # 센소지 좌표에서 가장 가까운 역(도에이 아사쿠사역)
+    assert stop_name == "浅草"

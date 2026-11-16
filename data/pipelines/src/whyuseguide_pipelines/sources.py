@@ -24,6 +24,7 @@ class Source:
     city: str | None = None
     estimated: bool = False
     query: str | None = None  # kind = sparql: data/pipelines 기준 쿼리 파일 경로
+    token_env: str | None = None  # 받을 때 필요한 토큰의 환경 변수 이름(.env). 값은 저장소에 두지 않는다.
 
     @property
     def local(self) -> bool:

@@ -92,3 +92,43 @@ def test_fetch_failure_leaves_no_file(tmp_path: Path) -> None:
     with pytest.raises(httpx.HTTPStatusError):
         fetch(source, tmp_path, client)
     assert not (tmp_path / "x" / "x.zip").exists()
+
+
+def test_fetch_sends_token_but_never_records_it(tmp_path: Path) -> None:
+    seen: list[httpx.URL] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req.url)
+        if req.url.params.get("acl:consumerKey") != "secret-token":
+            return httpx.Response(403)
+        return httpx.Response(200, content=b"zip")
+
+    source = Source(
+        "metro",
+        "gtfs",
+        "https://example.test/Metro-GTFS.zip",
+        "ODPT",
+        "x",
+        "weekly",
+        True,
+        city="tokyo",
+        token_env="ODPT_TOKEN",
+    )
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    path = fetch(source, tmp_path, client, token="secret-token")
+    assert "secret-token" not in provenance_path(path).read_text(encoding="utf-8")
+    with pytest.raises(httpx.HTTPStatusError) as err:
+        fetch(source, tmp_path, client, token="wrong-token")
+    assert "wrong-token" not in str(err.value)
+    assert len(seen) == 2
+
+
+def test_resolve_token_reads_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from whyuseguide_pipelines.fetch import resolve_token
+
+    monkeypatch.delenv("WUG_TEST_TOKEN", raising=False)
+    env = tmp_path / ".env"
+    env.write_text("WUG_TEST_TOKEN=abc\n", encoding="utf-8")
+    assert resolve_token("WUG_TEST_TOKEN", env) == "abc"
+    with pytest.raises(RuntimeError):
+        resolve_token("WUG_MISSING_TOKEN", env)

@@ -53,3 +53,49 @@ attribution = "Wikidata (CC0)"
 refresh = "monthly"
 otp = false
 city = "tokyo"
+
+# ODPT 기본 라이선스: 토큰 필요(token_env, .env), 원본·복원 가능한 파생 데이터 재배포 금지,
+# 갱신 공지 후 1주일 안에 반영, 앱에 출처·정확성 비보증·문의처 표시 (docs/data-licenses.md).
+[[source]]
+id = "tokyometro-train-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/TokyoMetro/data/TokyoMetro-Train-GTFS.zip"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "東京地下鉄・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "twr-train-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/TWR/data/TWR-Train-GTFS.zip"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "東京臨海高速鉄道・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "mir-train-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/MIR/data/MIR-Train-GTFS.zip"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "首都圏新都市鉄道・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+token_env = "ODPT_TOKEN"
+
+[[source]]
+id = "tamamonorail-train-gtfs"
+kind = "gtfs"
+url = "https://api.odpt.org/api/v4/files/TamaMonorail/data/TamaMonorail-Train-GTFS.zip"
+license = "公共交通オープンデータ基本ライセンス"
+attribution = "多摩都市モノレール・公共交通オープンデータセンター"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+token_env = "ODPT_TOKEN"

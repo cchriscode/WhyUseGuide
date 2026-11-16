@@ -6,6 +6,9 @@
 
 `sources.toml`이 PRD의 `data_sources` 설정이다. 출처마다 URL, 라이선스, 출처 표기 문구, 갱신 주기, OTP 입력 여부를 적는다. 새 출처는 라이선스를 `docs/data-licenses.md`에서 먼저 확인한 뒤 추가한다.
 
+토큰이 필요한 출처(ODPT 기본 라이선스: 도쿄메트로·린카이선·TX·다마 모노레일)는 `token_env = "ODPT_TOKEN"`으로 적고,
+토큰은 저장소 루트 `.env`에 둔다. 토큰은 출처 기록(provenance)과 오류 메시지에 남기지 않는다.
+
 ## 명령
 
 ```bash

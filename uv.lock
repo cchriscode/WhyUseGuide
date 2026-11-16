@@ -1700,6 +1700,7 @@ version = "0.0.0"
 source = { editable = "data/pipelines" }
 dependencies = [
     { name = "httpx" },
+    { name = "python-dotenv" },
     { name = "whyuseguide-api" },
     { name = "whyuseguide-engine" },
 ]
@@ -1712,6 +1713,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "whyuseguide-api", editable = "services/api" },
     { name = "whyuseguide-engine", editable = "services/engine" },
 ]
