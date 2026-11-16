@@ -6,7 +6,8 @@ export interface Endpoint {
   id: string;
   lat: number;
   lon: number;
-  lines: string[];
+  /** 노선 id → 그 노선의 가장 가까운 역까지 직선 km. 빈 값 = 가까운 역 없음, undefined = 모름(숙소 등). */
+  stations?: Record<string, number>;
 }
 
 export interface RouteLeg {
@@ -32,12 +33,28 @@ export function routeKm(a: Endpoint, b: Endpoint): number {
   return round2(straightKm(a, b) * C.approx.routeFactor);
 }
 
-export function transfersBetween(a: Endpoint, b: Endpoint, city: City): number {
-  if (a.lines.some((l) => b.lines.includes(l))) return 0;
+function nearestKm(stations: Record<string, number> | undefined): number {
+  if (stations === undefined) return C.approx.stationKmUnknown;
+  const values = Object.values(stations);
+  return values.length ? Math.min(...values) : C.approx.stationKmMax;
+}
+
+/** [환승 횟수, 양끝에서 탈 역까지 직선 km 합]. itinerary_engine.route.line_choice와 같은 규칙. */
+export function lineChoice(a: Endpoint, b: Endpoint, city: City): [number, number] {
+  const sa = a.stations ?? {};
+  const sb = b.stations ?? {};
+  const shared = Object.keys(sa).filter((x) => x in sb);
+  if (shared.length) return [0, Math.min(...shared.map((x) => sa[x]! + sb[x]!))];
   const links = (city.lineLinks ?? []).map(([x, y]) => `${x}\u0000${y}`);
   const linked = (x: string, y: string) => links.includes(`${x}\u0000${y}`) || links.includes(`${y}\u0000${x}`);
-  if (a.lines.some((x) => b.lines.some((y) => linked(x, y)))) return 1;
-  return 2;
+  const pairs: number[] = [];
+  for (const x of Object.keys(sa)) for (const y of Object.keys(sb)) if (linked(x, y)) pairs.push(sa[x]! + sb[y]!);
+  if (pairs.length) return [1, Math.min(...pairs)];
+  return [2, nearestKm(a.stations) + nearestKm(b.stations)];
+}
+
+export function transfersBetween(a: Endpoint, b: Endpoint, city: City): number {
+  return lineChoice(a, b, city)[0];
 }
 
 export function transitFare(km: number, city: City): number {
@@ -55,9 +72,12 @@ function walk(km: number): RouteLeg {
   return { mode: "walk", minutes: ceilMin((km * 1000) / C.approx.walkMetersPerMin), fare: 0, km, estimated: true, transfers: 0, label: "" };
 }
 
-function transit(km: number, transfers: number, city: City): RouteLeg {
+/** 역까지 걷기(직선 km × 1.3) + 기본 + km당 시간. */
+function transit(km: number, [transfers, accessKm]: [number, number], city: City): RouteLeg {
   const [base, perKm] = [C.approx.direct, C.approx.transfer1, C.approx.transfer2][transfers]!;
-  return { mode: "transit", minutes: ceilMin(base! + perKm! * km), fare: transitFare(km, city), km, estimated: true, transfers, label: "" };
+  const accessWalk = (round2(accessKm * C.approx.routeFactor) * 1000) / C.approx.walkMetersPerMin;
+  const minutes = ceilMin(accessWalk + base! + perKm! * km);
+  return { mode: "transit", minutes, fare: transitFare(km, city), km, estimated: true, transfers, label: "" };
 }
 
 function taxi(km: number, city: City): RouteLeg {
@@ -83,7 +103,7 @@ export function approxLeg(
   const km = routeKm(a, b);
   if (transport === "car") return car(km, city, parkingFee);
   const w = walk(km);
-  const t = transit(km, transfersBetween(a, b, city), city);
+  const t = transit(km, lineChoice(a, b, city), city);
   if (planMode === "balance") return km <= C.walkOnlyKm ? w : t;
   if (planMode === "cheap") return km <= C.walkCheapKm ? w : t;
   // 빠르게: 대중교통 최단. 걷는 게 더 빠르면 걷고, 환승 구간이 길면 택시와 비교한다.

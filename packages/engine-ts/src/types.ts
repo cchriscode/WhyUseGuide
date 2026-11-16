@@ -28,7 +28,8 @@ export interface Place {
   closed?: boolean;
   indoor?: boolean;
   parkingFee?: number;
-  lines?: string[];
+  /** 노선 id → 그 노선의 가장 가까운 역까지 직선 km (근사 경로 §5.3) */
+  stations?: Record<string, number>;
 }
 
 export interface Item {

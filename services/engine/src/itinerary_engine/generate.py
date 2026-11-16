@@ -162,7 +162,7 @@ def kmeans(
 
 
 def _endpoint(place: Place) -> Endpoint:
-    return Endpoint(place.id, place.lat, place.lon, place.lines)
+    return Endpoint(place.id, place.lat, place.lon, place.stations)
 
 
 def solve_order(

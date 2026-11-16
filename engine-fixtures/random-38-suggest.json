@@ -10,43 +10,76 @@
      "placeId": "38-0"
     },
     {
-     "placeId": "38-1",
-     "fixedAt": "11:00"
+     "placeId": "38-1"
+    },
+    {
+     "placeId": "38-2"
+    },
+    {
+     "placeId": "38-3"
     }
    ],
    "places": {
     "38-0": {
      "id": "38-0",
      "name": "장소38-0",
-     "type": "신사·사찰",
-     "lat": 35.66338,
-     "lon": 139.81465,
-     "defaultStayMin": 75,
-     "rating": 3.9,
-     "costPerPerson": 500,
+     "type": "시장",
+     "lat": 35.7133,
+     "lon": 139.75721,
+     "defaultStayMin": 120,
+     "rating": 4.4,
+     "costPerPerson": 2000,
      "indoor": true,
-     "lines": [
-      "O",
-      "Y"
-     ],
-     "open": "09:00",
-     "close": "17:00",
-     "lastEntry": "16:30"
+     "stations": {
+      "Y": 0.554
+     }
     },
     "38-1": {
      "id": "38-1",
      "name": "장소38-1",
-     "type": "신사·사찰",
-     "lat": 35.67375,
-     "lon": 139.7952,
-     "defaultStayMin": 120,
-     "rating": 4.2,
+     "type": "박물관",
+     "lat": 35.66057,
+     "lon": 139.70135,
+     "defaultStayMin": 45,
+     "rating": 4.1,
+     "costPerPerson": 500,
+     "indoor": false,
+     "stations": {
+      "H": 0.22,
+      "O": 0.056
+     },
+     "open": "11:00",
+     "close": "22:00"
+    },
+    "38-2": {
+     "id": "38-2",
+     "name": "장소38-2",
+     "type": "박물관",
+     "lat": 35.69757,
+     "lon": 139.72072,
+     "defaultStayMin": 60,
+     "rating": 3.3,
      "costPerPerson": 1000,
-     "indoor": true,
-     "lines": [
-      "G",
-      "Y"
-     ]
+     "indoor": false,
+     "stations": {
+      "Y": 0.639
+     },
+     "open": "09:00",
+     "close": "17:00"
+    },
+    "38-3": {
+     "id": "38-3",
+     "name": "장소38-3",
+     "type": "시장",
+     "lat": 35.71541,
+     "lon": 139.72478,
+     "defaultStayMin": 60,
+     "rating": 3.6,
+     "costPerPerson": 500,
+     "indoor": false,
+     "stations": {
+      "H": 0.507
+     }
     }
    },
    "city": {
@@ -101,71 +134,137 @@
     },
     "fuelPerKm": 12
    },
-   "planMode": "fast"
+   "planMode": "balance"
   },
   "mode": "replace",
   "cur": -1,
-  "position": 1,
+  "position": 0,
   "candidates": [
    {
     "id": "38-c0",
     "name": "장소38-c0",
-    "type": "맛집",
-    "lat": 35.6693,
-    "lon": 139.77038,
-    "defaultStayMin": 30,
-    "rating": 3.9,
-    "costPerPerson": 2000,
-    "indoor": true,
-    "lines": [
-     "M"
-    ],
-    "open": "11:00",
-    "close": "22:00"
+    "type": "시장",
+    "lat": 35.66934,
+    "lon": 139.73833,
+    "defaultStayMin": 90,
+    "rating": 4.4,
+    "costPerPerson": 0,
+    "indoor": false,
+    "stations": {
+     "Y": 0.124
+    }
    },
    {
     "id": "38-c1",
     "name": "장소38-c1",
-    "type": "전망",
-    "lat": 35.66719,
-    "lon": 139.72346,
-    "defaultStayMin": 75,
-    "rating": 4.0,
+    "type": "시장",
+    "lat": 35.69146,
+    "lon": 139.79455,
+    "defaultStayMin": 30,
+    "rating": 4.2,
     "costPerPerson": 0,
-    "indoor": true,
-    "lines": [
-     "H",
-     "Y"
-    ]
+    "indoor": false,
+    "stations": {
+     "O": 0.089
+    },
+    "open": "09:00",
+    "close": "17:00"
    },
    {
     "id": "38-c2",
     "name": "장소38-c2",
-    "type": "카페 거리",
-    "lat": 35.6911,
-    "lon": 139.77399,
-    "defaultStayMin": 45,
-    "rating": 4.8,
+    "type": "박물관",
+    "lat": 35.68583,
+    "lon": 139.73018,
+    "defaultStayMin": 60,
+    "rating": 4.4,
     "costPerPerson": 500,
     "indoor": false,
-    "lines": [
-     "Y"
-    ],
+    "stations": {
+     "H": 0.567
+    },
+    "open": "09:30",
+    "close": "16:30"
+   },
+   {
+    "id": "38-c3",
+    "name": "장소38-c3",
+    "type": "박물관",
+    "lat": 35.71276,
+    "lon": 139.70753,
+    "defaultStayMin": 60,
+    "rating": 3.4,
+    "costPerPerson": 500,
+    "indoor": true,
+    "stations": {}
+   },
+   {
+    "id": "38-c4",
+    "name": "장소38-c4",
+    "type": "맛집",
+    "lat": 35.71307,
+    "lon": 139.69077,
+    "defaultStayMin": 45,
+    "rating": 4.9,
+    "costPerPerson": 0,
+    "indoor": true,
+    "stations": {
+     "M": 0.558
+    },
     "open": "09:00",
-    "close": "17:00",
-    "lastEntry": "16:30"
+    "close": "17:00"
    }
   ]
  },
  "expected": [
   {
+   "placeId": "38-c1",
+   "name": "장소38-c1",
+   "position": 0,
+   "score": -89.2,
+   "detourMin": -19,
+   "arrive": "08:30",
+   "endAfter": "15:20",
+   "absorbed": true,
+   "sameType": true,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "비슷한 곳",
+    "가는 길"
+   ],
+   "effect": "이동이 19분 줄어요 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
+   "placeId": "38-c0",
+   "name": "장소38-c0",
+   "position": 0,
+   "score": -88.4,
+   "detourMin": -17,
+   "arrive": "08:30",
+   "endAfter": "15:20",
+   "absorbed": true,
+   "sameType": true,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "비슷한 곳",
+    "가는 길"
+   ],
+   "effect": "이동이 17분 줄어요 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
    "placeId": "38-c2",
    "name": "장소38-c2",
-   "position": 1,
-   "score": -42.8,
-   "detourMin": 6,
-   "arrive": "10:40",
-   "endAfter": "11:25",
+   "position": 0,
+   "score": -66.4,
+   "detourMin": -20,
+   "arrive": "08:30",
+   "endAfter": "15:25",
    "absorbed": true,
    "sameType": false,
    "outsideHours": false,
@@ -174,46 +273,7 @@
     "기다리는 시간 활용",
     "가는 길"
    ],
-   "effect": "6분 돌아가요 · 끝나는 시간 그대로",
-   "warning": null
-  },
-  {
-   "placeId": "38-c0",
-   "name": "장소38-c0",
-   "position": 1,
-   "score": -33.4,
-   "detourMin": 10,
-   "arrive": "10:40",
-   "endAfter": "11:30",
-   "absorbed": true,
-   "sameType": false,
-   "outsideHours": false,
-   "newIssues": 0,
-   "badges": [
-    "기다리는 시간 활용",
-    "가는 길",
-    "실내"
-   ],
-   "effect": "10분 돌아가요 · 끝나는 시간 그대로",
-   "warning": null
-  },
-  {
-   "placeId": "38-c1",
-   "name": "장소38-c1",
-   "position": 1,
-   "score": -29.0,
-   "detourMin": 15,
-   "arrive": "10:45",
-   "endAfter": "12:00",
-   "absorbed": true,
-   "sameType": false,
-   "outsideHours": false,
-   "newIssues": 0,
-   "badges": [
-    "기다리는 시간 활용",
-    "실내"
-   ],
-   "effect": "15분 돌아가요 · 끝나는 시간 그대로",
+   "effect": "이동이 20분 줄어요 · 끝나는 시간 그대로",
    "warning": null
   }
  ]

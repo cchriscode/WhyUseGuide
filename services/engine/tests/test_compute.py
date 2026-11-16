@@ -7,7 +7,7 @@ from builders import day, leg, place, stops
 from itinerary_engine.compute import compute
 from itinerary_engine.config import constants
 from itinerary_engine.models import City, FareBand, LegRow
-from itinerary_engine.route import Endpoint, approx_leg, route_km, transfers_between
+from itinerary_engine.route import Endpoint, approx_leg, line_choice, route_km
 
 REPO = Path(__file__).resolve().parents[3]
 
@@ -138,8 +138,13 @@ CITY = City(
 )
 
 
-def ep(pid: str, lon: float, lines: tuple[str, ...] = ()) -> Endpoint:
-    return Endpoint(pid, 35.68, lon, lines)
+def ep(pid: str, lon: float, stations: dict[str, float] | None = None) -> Endpoint:
+    return Endpoint(pid, 35.68, lon, stations)
+
+
+def lc(a: Endpoint, b: Endpoint, city: City) -> tuple[int, float]:
+    transfers, km = line_choice(a, b, city)
+    return transfers, round(km, 3)
 
 
 def at_km(km: float) -> float:
@@ -152,39 +157,53 @@ def at_km(km: float) -> float:
     [
         (1.0, "walk", 14),  # 1000 / 75 = 13.3 → 14
         (1.4, "walk", 19),
-        (3.0, "transit", 15),  # 직통 9 + 1.9 × 3 = 14.7 → 15
+        # 역까지 0.2 + 0.2km → 걷기 0.52km = 6.93분, 직통 9 + 1.8 × 3 = 14.4 → 21.33 → 22
+        (3.0, "transit", 22),
     ],
 )
 def test_balance_mode(km: float, mode: str, minutes: int) -> None:
-    a, b = ep("a", 139.70, ("L1",)), ep("b", 139.70 + at_km(km), ("L1",))
+    a, b = ep("a", 139.70, {"L1": 0.2}), ep("b", 139.70 + at_km(km), {"L1": 0.2})
     assert route_km(a, b) == pytest.approx(km, abs=0.01)
     r = approx_leg(a, b, "balance", "transit", CITY)
     assert (r.mode, r.minutes) == (mode, minutes)
 
 
 def test_cheap_mode_walks_further() -> None:
-    a, b = ep("a", 139.70, ("L1",)), ep("b", 139.70 + at_km(2.5), ("L1",))
+    a, b = ep("a", 139.70, {"L1": 0.2}), ep("b", 139.70 + at_km(2.5), {"L1": 0.2})
     assert approx_leg(a, b, "balance", "transit", CITY).mode == "transit"
     assert approx_leg(a, b, "cheap", "transit", CITY).mode == "walk"
 
 
 def test_transfers_and_fare() -> None:
     city = City(line_links=(("L1", "L2"),), fare_bands=CITY.fare_bands)
-    a = ep("a", 139.70, ("L1",))
-    assert transfers_between(a, ep("b", 139.75, ("L1", "L3")), city) == 0
-    assert transfers_between(a, ep("b", 139.75, ("L2",)), city) == 1
-    assert transfers_between(a, ep("b", 139.75, ("L9",)), city) == 2
-    b = ep("b", 139.70 + at_km(8.0), ("L2",))
+    a = ep("a", 139.70, {"L1": 0.1})
+    assert lc(a, ep("b", 139.75, {"L1": 0.5, "L3": 0.1}), city) == (0, 0.6)
+    assert lc(a, ep("b", 139.75, {"L2": 0.3}), city) == (1, 0.4)
+    assert lc(a, ep("b", 139.75, {"L9": 0.3}), city) == (2, 0.4)
+    b = ep("b", 139.70 + at_km(8.0), {"L2": 0.3})
     r = approx_leg(a, b, "balance", "transit", city)
-    assert (r.minutes, r.fare, r.transfers) == (30, 210, 1)  # 14 + 2.0 × 8 = 30
+    # 걷기 0.4 × 1.3 = 0.52km → 6.93분, 환승 1회 20 + 1.8 × 8 = 34.4 → 41.33 → 42
+    assert (r.minutes, r.fare, r.transfers) == (42, 210, 1)
+
+
+def test_line_choice_prefers_closest_stations() -> None:
+    city = City(line_links=(("L1", "L2"), ("L3", "L2")))
+    a = ep("a", 139.70, {"L1": 0.7, "L3": 0.2})
+    assert lc(a, ep("b", 139.75, {"L2": 0.1}), city) == (1, 0.3)
+
+
+def test_station_distance_when_unknown_or_far() -> None:
+    # 가까운 역이 없으면(빈 값) 한쪽 0.8km, 역 정보가 없는 지점(None)은 0.35km로 본다
+    assert lc(ep("a", 139.70, {}), ep("b", 139.75, {}), City()) == (2, 1.6)
+    assert lc(ep("a", 139.70), ep("b", 139.75, {"L1": 0.1}), City()) == (2, 0.45)
 
 
 def test_fast_mode_takes_taxi_for_long_transfers() -> None:
     city = City(line_links=(("L1", "L2"),), fare_bands=CITY.fare_bands)
-    a, b = ep("a", 139.70, ("L1",)), ep("b", 139.70 + at_km(8.0), ("L2",))
+    a, b = ep("a", 139.70, {"L1": 0.1}), ep("b", 139.70 + at_km(8.0), {"L2": 0.3})
     r = approx_leg(a, b, "fast", "transit", city)
-    assert (r.mode, r.minutes) == ("taxi", 28)  # 8 + 2.4 × 8 = 27.2 → 28 < 대중교통 30
-    near = ep("c", 139.70 + at_km(5.0), ("L2",))
+    assert (r.mode, r.minutes) == ("taxi", 28)  # 8 + 2.4 × 8 = 27.2 → 28 < 대중교통 42
+    near = ep("c", 139.70 + at_km(5.0), {"L2": 0.3})
     assert approx_leg(a, near, "fast", "transit", city).mode == "transit"  # 6km 이하는 비교하지 않는다
 
 

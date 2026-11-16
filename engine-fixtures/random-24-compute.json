@@ -4,11 +4,10 @@
  "input": {
   "day": {
    "date": "2026-10-27",
-   "start": "08:30",
+   "start": "10:00",
    "items": [
     {
-     "placeId": "24-0",
-     "stayMin": 90
+     "placeId": "24-0"
     },
     {
      "placeId": "24-1"
@@ -24,125 +23,95 @@
     },
     {
      "placeId": "24-5"
-    },
-    {
-     "placeId": "24-6"
     }
    ],
    "places": {
     "24-0": {
      "id": "24-0",
      "name": "장소24-0",
-     "type": "맛집",
-     "lat": 35.70094,
-     "lon": 139.72125,
-     "defaultStayMin": 90,
-     "rating": 5.0,
-     "costPerPerson": 500,
-     "indoor": true,
-     "lines": [
-      "Y"
-     ],
-     "open": "09:30",
-     "close": "16:30"
+     "type": "시장",
+     "lat": 35.7068,
+     "lon": 139.80153,
+     "defaultStayMin": 75,
+     "rating": 4.0,
+     "costPerPerson": 2000,
+     "indoor": false,
+     "stations": {},
+     "open": "09:00",
+     "close": "17:00",
+     "lastEntry": "16:30"
     },
     "24-1": {
      "id": "24-1",
      "name": "장소24-1",
-     "type": "박물관",
-     "lat": 35.68522,
-     "lon": 139.78518,
-     "defaultStayMin": 120,
-     "rating": 4.5,
-     "costPerPerson": 2000,
+     "type": "카페 거리",
+     "lat": 35.67631,
+     "lon": 139.73601,
+     "defaultStayMin": 60,
+     "rating": 3.3,
+     "costPerPerson": 1000,
      "indoor": true,
-     "lines": [
-      "A",
-      "G"
-     ],
-     "open": "09:30",
-     "close": "16:30"
+     "stations": {
+      "Y": 0.507
+     },
+     "open": "09:00",
+     "close": "17:00"
     },
     "24-2": {
      "id": "24-2",
      "name": "장소24-2",
-     "type": "카페 거리",
-     "lat": 35.69432,
-     "lon": 139.77237,
-     "defaultStayMin": 30,
-     "rating": 3.4,
+     "type": "박물관",
+     "lat": 35.6502,
+     "lon": 139.69523,
+     "defaultStayMin": 90,
+     "rating": 3.3,
      "costPerPerson": 0,
      "indoor": false,
-     "lines": [
-      "G"
-     ]
+     "stations": {},
+     "open": "10:00",
+     "close": "20:00"
     },
     "24-3": {
      "id": "24-3",
      "name": "장소24-3",
-     "type": "카페 거리",
-     "lat": 35.666,
-     "lon": 139.73265,
-     "defaultStayMin": 60,
-     "rating": 3.7,
-     "costPerPerson": 0,
+     "type": "시장",
+     "lat": 35.65993,
+     "lon": 139.77854,
+     "defaultStayMin": 30,
+     "rating": 4.5,
+     "costPerPerson": 2000,
      "indoor": false,
-     "lines": [
-      "H"
-     ],
-     "open": "09:00",
-     "close": "17:00",
-     "lastEntry": "16:30"
+     "stations": {}
     },
     "24-4": {
      "id": "24-4",
      "name": "장소24-4",
-     "type": "맛집",
-     "lat": 35.69062,
-     "lon": 139.79444,
-     "defaultStayMin": 120,
-     "rating": 4.7,
-     "costPerPerson": 1000,
-     "indoor": false,
-     "lines": [
-      "A",
-      "Y"
-     ],
-     "open": "11:00",
-     "close": "22:00"
+     "type": "시장",
+     "lat": 35.68982,
+     "lon": 139.79801,
+     "defaultStayMin": 90,
+     "rating": 4.8,
+     "costPerPerson": 0,
+     "indoor": true,
+     "stations": {
+      "A": 0.716
+     }
     },
     "24-5": {
      "id": "24-5",
      "name": "장소24-5",
-     "type": "신사·사찰",
-     "lat": 35.70141,
-     "lon": 139.69745,
+     "type": "박물관",
+     "lat": 35.67189,
+     "lon": 139.78428,
      "defaultStayMin": 75,
-     "rating": 5.0,
-     "costPerPerson": 0,
+     "rating": 4.8,
+     "costPerPerson": 1000,
      "indoor": true,
-     "lines": [
-      "G"
-     ],
-     "open": "09:00",
-     "close": "17:00"
-    },
-    "24-6": {
-     "id": "24-6",
-     "name": "장소24-6",
-     "type": "카페 거리",
-     "lat": 35.662,
-     "lon": 139.77045,
-     "defaultStayMin": 90,
-     "rating": 3.0,
-     "costPerPerson": 500,
-     "indoor": false,
-     "lines": [
-      "G"
-     ],
-     "open": "09:00",
-     "close": "17:00",
-     "lastEntry": "16:30"
+     "stations": {
+      "Y": 0.249
+     },
+     "open": "09:30",
+     "close": "16:30"
     }
    },
    "city": {
@@ -197,7 +166,8 @@
     },
     "fuelPerKm": 12
    },
-   "planMode": "balance"
+   "planMode": "balance",
+   "dayEnd": "16:00"
   }
  },
  "expected": {
@@ -206,11 +176,11 @@
     "kind": "stop",
     "placeId": "24-0",
     "name": "장소24-0",
-    "arrive": "08:30",
-    "wait": 60,
-    "start": "09:30",
-    "end": "11:00",
-    "stayMin": 90,
+    "arrive": "10:00",
+    "wait": 0,
+    "start": "10:00",
+    "end": "11:15",
+    "stayMin": 75,
     "issue": null,
     "fixedAt": null
    },
@@ -219,11 +189,11 @@
     "from": "24-0",
     "to": "24-1",
     "mode": "transit",
-    "minutes": 30,
+    "minutes": 66,
     "fare": 210,
-    "km": 7.84,
+    "km": 8.87,
     "estimated": true,
-    "transfers": 1,
+    "transfers": 2,
     "label": "",
     "delayMin": 0,
     "breakMin": 0
@@ -232,11 +202,11 @@
     "kind": "stop",
     "placeId": "24-1",
     "name": "장소24-1",
-    "arrive": "11:30",
+    "arrive": "12:25",
     "wait": 0,
-    "start": "11:30",
-    "end": "13:30",
-    "stayMin": 120,
+    "start": "12:25",
+    "end": "13:25",
+    "stayMin": 60,
     "issue": null,
     "fixedAt": null
    },
@@ -245,11 +215,11 @@
     "from": "24-1",
     "to": "24-2",
     "mode": "transit",
-    "minutes": 13,
-    "fare": 180,
-    "km": 2.0,
+    "minutes": 61,
+    "fare": 210,
+    "km": 6.1,
     "estimated": true,
-    "transfers": 0,
+    "transfers": 2,
     "label": "",
     "delayMin": 0,
     "breakMin": 0
@@ -258,11 +228,11 @@
     "kind": "stop",
     "placeId": "24-2",
     "name": "장소24-2",
-    "arrive": "13:45",
+    "arrive": "14:30",
     "wait": 0,
-    "start": "13:45",
-    "end": "14:15",
-    "stayMin": 30,
+    "start": "14:30",
+    "end": "16:00",
+    "stayMin": 90,
     "issue": null,
     "fixedAt": null
    },
@@ -271,9 +241,9 @@
     "from": "24-2",
     "to": "24-3",
     "mode": "transit",
-    "minutes": 32,
+    "minutes": 73,
     "fare": 210,
-    "km": 6.21,
+    "km": 9.89,
     "estimated": true,
     "transfers": 2,
     "label": "",
@@ -284,11 +254,11 @@
     "kind": "stop",
     "placeId": "24-3",
     "name": "장소24-3",
-    "arrive": "14:50",
+    "arrive": "17:15",
     "wait": 0,
-    "start": "14:50",
-    "end": "15:50",
-    "stayMin": 60,
+    "start": "17:15",
+    "end": "17:45",
+    "stayMin": 30,
     "issue": null,
     "fixedAt": null
    },
@@ -297,11 +267,11 @@
     "from": "24-3",
     "to": "24-4",
     "mode": "transit",
-    "minutes": 31,
-    "fare": 210,
-    "km": 8.08,
+    "minutes": 63,
+    "fare": 180,
+    "km": 4.89,
     "estimated": true,
-    "transfers": 1,
+    "transfers": 2,
     "label": "",
     "delayMin": 0,
     "breakMin": 0
@@ -310,11 +280,11 @@
     "kind": "stop",
     "placeId": "24-4",
     "name": "장소24-4",
-    "arrive": "16:25",
+    "arrive": "18:50",
     "wait": 0,
-    "start": "16:25",
-    "end": "18:25",
-    "stayMin": 120,
+    "start": "18:50",
+    "end": "20:20",
+    "stayMin": 90,
     "issue": null,
     "fixedAt": null
    },
@@ -323,11 +293,11 @@
     "from": "24-4",
     "to": "24-5",
     "mode": "transit",
-    "minutes": 37,
-    "fare": 260,
-    "km": 11.49,
+    "minutes": 50,
+    "fare": 180,
+    "km": 3.05,
     "estimated": true,
-    "transfers": 1,
+    "transfers": 2,
     "label": "",
     "delayMin": 0,
     "breakMin": 0
@@ -336,47 +306,21 @@
     "kind": "stop",
     "placeId": "24-5",
     "name": "장소24-5",
-    "arrive": "19:05",
+    "arrive": "21:10",
     "wait": 0,
-    "start": "19:05",
-    "end": "20:20",
+    "start": "21:10",
+    "end": "22:25",
     "stayMin": 75,
-    "issue": "close",
-    "fixedAt": null
-   },
-   {
-    "kind": "leg",
-    "from": "24-5",
-    "to": "24-6",
-    "mode": "transit",
-    "minutes": 29,
-    "fare": 210,
-    "km": 10.29,
-    "estimated": true,
-    "transfers": 0,
-    "label": "",
-    "delayMin": 0,
-    "breakMin": 0
-   },
-   {
-    "kind": "stop",
-    "placeId": "24-6",
-    "name": "장소24-6",
-    "arrive": "20:50",
-    "wait": 0,
-    "start": "20:50",
-    "end": "22:20",
-    "stayMin": 90,
     "issue": "close",
     "fixedAt": null
    }
   ],
   "totals": {
-   "moveMin": 172,
-   "farePerPerson": 1280,
-   "spendPerPerson": 5280,
-   "end": "22:20",
-   "issues": 2,
+   "moveMin": 313,
+   "farePerPerson": 990,
+   "spendPerPerson": 6990,
+   "end": "22:25",
+   "issues": 1,
    "overEnd": true
   }
  }

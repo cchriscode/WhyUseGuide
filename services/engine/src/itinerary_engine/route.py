@@ -1,7 +1,8 @@
 """구간 경로 선택 (PRD §5.3). 알려진 구간(OTP·캐시)이 있으면 그것을, 없으면 근사 규칙을 쓴다."""
 
 import math
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 from itinerary_engine.config import ceil_min, constants, round2
 from itinerary_engine.models import City, Leg, LegMode, PlanMode, Transport
@@ -12,7 +13,9 @@ class Endpoint:
     id: str
     lat: float
     lon: float
-    lines: tuple[str, ...] = ()
+    # 노선 id → 그 노선의 가장 가까운 역까지 직선 km (STATION_KM_MAX 안).
+    # 빈 값 = 가까운 역이 없음, None = 모름(숙소 등 역 정보가 없는 지점).
+    stations: Mapping[str, float] | None = field(default=None, hash=False)
 
 
 @dataclass(frozen=True)
@@ -37,14 +40,32 @@ def route_km(a: Endpoint, b: Endpoint) -> float:
     return round2(straight_km(a, b) * constants()["approx"]["routeFactor"])
 
 
-def transfers_between(a: Endpoint, b: Endpoint, city: City) -> int:
-    """같은 노선 → 0, 두 노선이 만나는 환승역이 있으면 1, 없으면 2."""
-    if set(a.lines) & set(b.lines):
-        return 0
+def _nearest_km(stations: Mapping[str, float] | None) -> float:
+    approx = constants()["approx"]
+    if stations is None:
+        return float(approx["stationKmUnknown"])
+    return min(stations.values(), default=float(approx["stationKmMax"]))
+
+
+def line_choice(a: Endpoint, b: Endpoint, city: City) -> tuple[int, float]:
+    """(환승 횟수, 양끝에서 탈 역까지 직선 km 합).
+
+    같은 노선이 있으면 직통(0), 두 노선이 만나는 환승역이 있으면 1, 없으면 2.
+    직통·환승 1회는 양끝 역까지 거리 합이 가장 작은 노선(쌍)을 고르고, 2회는 각자 가장 가까운 역을 쓴다.
+    """
+    sa, sb = a.stations or {}, b.stations or {}
+    shared = set(sa) & set(sb)
+    if shared:
+        return 0, min(sa[x] + sb[x] for x in shared)
     links = {frozenset(p) for p in city.line_links}
-    if any(frozenset((x, y)) in links for x in a.lines for y in b.lines):
-        return 1
-    return 2
+    linked = [sa[x] + sb[y] for x in sa for y in sb if frozenset((x, y)) in links]
+    if linked:
+        return 1, min(linked)
+    return 2, _nearest_km(a.stations) + _nearest_km(b.stations)
+
+
+def transfers_between(a: Endpoint, b: Endpoint, city: City) -> int:
+    return line_choice(a, b, city)[0]
 
 
 def transit_fare(km: float, city: City) -> int:
@@ -63,10 +84,13 @@ def _walk(km: float) -> RouteLeg:
     return RouteLeg("walk", ceil_min(km * 1000 / constants()["approx"]["walkMetersPerMin"]), 0, km, True)
 
 
-def _transit(km: float, transfers: int, city: City) -> RouteLeg:
+def _transit(km: float, transfers: int, access_km: float, city: City) -> RouteLeg:
+    """역까지 걷기(직선 km × 1.3) + 기본 + km당 시간."""
     approx = constants()["approx"]
     base, per_km = approx[("direct", "transfer1", "transfer2")[transfers]]
-    return RouteLeg("transit", ceil_min(base + per_km * km), transit_fare(km, city), km, True, transfers)
+    access_walk = round2(access_km * approx["routeFactor"]) * 1000 / approx["walkMetersPerMin"]
+    minutes = ceil_min(access_walk + base + per_km * km)
+    return RouteLeg("transit", minutes, transit_fare(km, city), km, True, transfers)
 
 
 def _taxi(km: float, city: City) -> RouteLeg:
@@ -98,7 +122,7 @@ def approx_leg(
     if transport == "car":
         return _car(km, city, parking_fee)
     walk = _walk(km)
-    transit = _transit(km, transfers_between(a, b, city), city)
+    transit = _transit(km, *line_choice(a, b, city), city)
     if plan_mode == "balance":
         return walk if km <= c["walkOnlyKm"] else transit
     if plan_mode == "cheap":

@@ -41,7 +41,7 @@ class Place(EngineModel):
     closed: bool = False  # 그날 휴무
     indoor: bool = False
     parking_fee: int = 0
-    lines: tuple[str, ...] = ()  # 가까운 역의 노선 id (근사 경로용)
+    stations: dict[str, float] = {}  # 노선 id → 그 노선의 가장 가까운 역까지 직선 km (근사 경로용, §5.3)
 
 
 class Item(EngineModel):

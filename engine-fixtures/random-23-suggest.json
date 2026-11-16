@@ -4,46 +4,96 @@
  "input": {
   "day": {
    "date": "2026-10-27",
-   "start": "08:30",
+   "start": "09:00",
    "items": [
     {
      "placeId": "23-0"
     },
     {
-     "placeId": "23-1",
-     "stayMin": 90
+     "placeId": "23-1"
+    },
+    {
+     "placeId": "23-2"
+    },
+    {
+     "placeId": "23-3"
+    },
+    {
+     "placeId": "23-4"
     }
    ],
    "places": {
     "23-0": {
      "id": "23-0",
      "name": "장소23-0",
-     "type": "시장",
-     "lat": 35.67755,
-     "lon": 139.77031,
-     "defaultStayMin": 45,
-     "rating": 4.4,
-     "costPerPerson": 2000,
+     "type": "공원",
+     "lat": 35.71604,
+     "lon": 139.69584,
+     "defaultStayMin": 75,
+     "rating": 3.1,
+     "costPerPerson": 0,
      "indoor": false,
-     "lines": [
-      "O"
-     ]
+     "stations": {},
+     "open": "09:00",
+     "close": "17:00",
+     "lastEntry": "16:30"
     },
     "23-1": {
      "id": "23-1",
      "name": "장소23-1",
      "type": "박물관",
-     "lat": 35.65128,
-     "lon": 139.69066,
-     "defaultStayMin": 75,
-     "rating": 4.6,
+     "lat": 35.70169,
+     "lon": 139.81806,
+     "defaultStayMin": 30,
+     "rating": 3.2,
      "costPerPerson": 0,
      "indoor": true,
-     "lines": [
-      "A",
-      "G"
-     ],
-     "closed": true
+     "stations": {
+      "G": 0.052,
+      "H": 0.265
+     },
+     "open": "11:00",
+     "close": "22:00"
+    },
+    "23-2": {
+     "id": "23-2",
+     "name": "장소23-2",
+     "type": "카페 거리",
+     "lat": 35.7145,
+     "lon": 139.7612,
+     "defaultStayMin": 120,
+     "rating": 4.9,
+     "costPerPerson": 2000,
+     "indoor": false,
+     "stations": {
+      "M": 0.781
+     }
+    },
+    "23-3": {
+     "id": "23-3",
+     "name": "장소23-3",
+     "type": "맛집",
+     "lat": 35.66631,
+     "lon": 139.75033,
+     "defaultStayMin": 45,
+     "rating": 4.5,
+     "costPerPerson": 0,
+     "indoor": false,
+     "stations": {
+      "M": 0.333
+     }
+    },
+    "23-4": {
+     "id": "23-4",
+     "name": "장소23-4",
+     "type": "박물관",
+     "lat": 35.70353,
+     "lon": 139.70456,
+     "defaultStayMin": 60,
+     "rating": 3.1,
+     "costPerPerson": 1000,
+     "indoor": true,
+     "stations": {}
     }
    },
    "city": {
@@ -98,13 +148,18 @@
     },
     "fuelPerKm": 12
    },
-   "planMode": "cheap",
-   "delay": {
-    "gap": 1,
-    "minutes": 20
-   }
+   "planMode": "balance",
+   "startPoint": {
+    "lat": 35.69,
+    "lon": 139.7
+   },
+   "endPoint": {
+    "lat": 35.69,
+    "lon": 139.7
+   },
+   "dayEnd": "18:00"
   },
-  "mode": "replace",
+  "mode": "fill",
   "cur": -1,
   "position": 1,
   "candidates": [
@@ -112,123 +167,132 @@
     "id": "23-c0",
     "name": "장소23-c0",
     "type": "카페 거리",
-    "lat": 35.71132,
-    "lon": 139.78311,
-    "defaultStayMin": 45,
-    "rating": 4.6,
+    "lat": 35.69146,
+    "lon": 139.74958,
+    "defaultStayMin": 60,
+    "rating": 4.1,
     "costPerPerson": 0,
-    "indoor": true,
-    "lines": [
-     "Y"
-    ],
-    "open": "10:00",
-    "close": "20:00"
+    "indoor": false,
+    "stations": {},
+    "open": "09:00",
+    "close": "17:00",
+    "lastEntry": "16:30"
    },
    {
     "id": "23-c1",
     "name": "장소23-c1",
-    "type": "맛집",
-    "lat": 35.67346,
-    "lon": 139.70789,
-    "defaultStayMin": 120,
-    "rating": 4.7,
-    "costPerPerson": 500,
+    "type": "박물관",
+    "lat": 35.71566,
+    "lon": 139.69893,
+    "defaultStayMin": 30,
+    "rating": 4.1,
+    "costPerPerson": 1000,
     "indoor": false,
-    "lines": [
-     "G",
-     "O"
-    ]
+    "stations": {
+     "H": 0.657,
+     "M": 0.072
+    },
+    "open": "09:00",
+    "close": "17:00"
    },
    {
     "id": "23-c2",
     "name": "장소23-c2",
     "type": "맛집",
-    "lat": 35.69128,
-    "lon": 139.71973,
-    "defaultStayMin": 90,
-    "rating": 5.0,
+    "lat": 35.65443,
+    "lon": 139.69198,
+    "defaultStayMin": 60,
+    "rating": 4.8,
     "costPerPerson": 0,
     "indoor": true,
-    "lines": [
-     "A"
-    ]
+    "stations": {
+     "H": 0.255
+    },
+    "open": "09:30",
+    "close": "16:30"
    },
    {
     "id": "23-c3",
     "name": "장소23-c3",
-    "type": "공원",
-    "lat": 35.69802,
-    "lon": 139.71187,
-    "defaultStayMin": 45,
+    "type": "카페 거리",
+    "lat": 35.71349,
+    "lon": 139.68746,
+    "defaultStayMin": 75,
     "rating": 4.7,
     "costPerPerson": 0,
-    "indoor": false,
-    "lines": [
-     "O"
-    ],
-    "open": "11:00",
-    "close": "22:00"
+    "indoor": true,
+    "stations": {}
+   },
+   {
+    "id": "23-c4",
+    "name": "장소23-c4",
+    "type": "박물관",
+    "lat": 35.7184,
+    "lon": 139.7233,
+    "defaultStayMin": 90,
+    "rating": 4.8,
+    "costPerPerson": 0,
+    "indoor": true,
+    "stations": {
+     "A": 0.275,
+     "M": 0.606
+    }
    }
   ]
  },
  "expected": [
   {
-   "placeId": "23-c3",
-   "name": "장소23-c3",
+   "placeId": "23-c1",
+   "name": "장소23-c1",
    "position": 1,
-   "score": -64.2,
-   "detourMin": -16,
-   "arrive": "10:00",
-   "endAfter": "11:45",
-   "absorbed": true,
+   "score": 8.4,
+   "detourMin": -12,
+   "arrive": "11:15",
+   "endAfter": "19:35",
+   "absorbed": false,
    "sameType": false,
    "outsideHours": false,
    "newIssues": 0,
    "badges": [
-    "기다리는 시간 활용",
     "가는 길"
    ],
-   "effect": "이동이 16분 줄어요 · 끝나는 시간 그대로",
+   "effect": "이동이 12분 줄어요 · 끝나는 시간 20분 늦어져요",
    "warning": null
   },
   {
-   "placeId": "23-c2",
-   "name": "장소23-c2",
-   "position": 1,
-   "score": -58.0,
-   "detourMin": -8,
-   "arrive": "10:10",
-   "endAfter": "11:40",
-   "absorbed": true,
+   "placeId": "23-c3",
+   "name": "장소23-c3",
+   "position": 0,
+   "score": 30.8,
+   "detourMin": 14,
+   "arrive": "09:55",
+   "endAfter": "20:45",
+   "absorbed": false,
    "sameType": false,
    "outsideHours": false,
    "newIssues": 0,
    "badges": [
-    "기다리는 시간 활용",
-    "가는 길",
     "실내"
    ],
-   "effect": "이동이 8분 줄어요 · 끝나는 시간 그대로",
+   "effect": "14분 돌아가요 · 끝나는 시간 90분 늦어져요",
    "warning": null
   },
   {
-   "placeId": "23-c0",
-   "name": "장소23-c0",
-   "position": 1,
-   "score": -57.6,
-   "detourMin": -10,
-   "arrive": "10:05",
-   "endAfter": "10:50",
-   "absorbed": true,
+   "placeId": "23-c4",
+   "name": "장소23-c4",
+   "position": 4,
+   "score": 47.2,
+   "detourMin": 31,
+   "arrive": "17:50",
+   "endAfter": "21:15",
+   "absorbed": false,
    "sameType": false,
    "outsideHours": false,
    "newIssues": 0,
    "badges": [
-    "기다리는 시간 활용",
-    "가는 길",
     "실내"
    ],
-   "effect": "이동이 10분 줄어요 · 끝나는 시간 그대로",
+   "effect": "31분 돌아가요 · 끝나는 시간 120분 늦어져요",
    "warning": null
   }
  ]

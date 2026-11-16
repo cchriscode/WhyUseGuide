@@ -89,10 +89,10 @@ def test_patch_remove_and_version_conflict(client: TestClient, token: str) -> No
 
 
 def test_auto_adjust_and_undo(client: TestClient, token: str, db: Engine) -> None:
-    trip_id = create(client, token, dayEndTime="16:00")["tripId"]
+    trip_id = create(client, token, dayEndTime="15:00")["tripId"]
     day = client.get(f"/v1/trips/{trip_id}", headers=auth(token)).json()["days"][0]
     first = stops(day)[0]["placeId"]
-    # 첫 장소 체류를 크게 늘려 종료 목표(16:00)를 넘게 만든다 → 자동 조정이 체류를 줄인다
+    # 첫 장소 체류를 크게 늘려 종료 목표(15:00)를 넘게 만든다. 순서만 바꿔서는 못 맞추므로 체류를 줄인다
     r = client.patch(
         f"/v1/trips/{trip_id}/days/0",
         json={"ops": [{"op": "stay", "placeId": first, "stayMin": 240}], "clientVersion": day["version"]},

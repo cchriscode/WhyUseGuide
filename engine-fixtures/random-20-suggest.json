@@ -4,65 +4,49 @@
  "input": {
   "day": {
    "date": "2026-10-27",
-   "start": "10:00",
+   "start": "09:00",
    "items": [
     {
-     "placeId": "20-0"
+     "placeId": "20-0",
+     "stayMin": 30
     },
     {
-     "placeId": "20-1"
-    },
-    {
-     "placeId": "20-2"
+     "placeId": "20-1",
+     "fixedAt": "17:00"
     }
    ],
    "places": {
     "20-0": {
      "id": "20-0",
      "name": "장소20-0",
-     "type": "전망",
-     "lat": 35.71845,
-     "lon": 139.7136,
-     "defaultStayMin": 45,
-     "rating": 4.2,
-     "costPerPerson": 0,
+     "type": "공원",
+     "lat": 35.69899,
+     "lon": 139.81126,
+     "defaultStayMin": 30,
+     "rating": 4.4,
+     "costPerPerson": 1000,
      "indoor": true,
-     "lines": [
-      "M"
-     ],
-     "open": "10:00",
-     "close": "20:00"
+     "stations": {
+      "G": 0.336,
+      "O": 0.583
+     },
+     "open": "11:00",
+     "close": "22:00"
     },
     "20-1": {
      "id": "20-1",
      "name": "장소20-1",
      "type": "시장",
-     "lat": 35.68201,
-     "lon": 139.68901,
-     "defaultStayMin": 120,
-     "rating": 4.4,
-     "costPerPerson": 0,
-     "indoor": false,
-     "lines": [
-      "M",
-      "O"
-     ],
-     "open": "10:00",
-     "close": "20:00"
-    },
-    "20-2": {
-     "id": "20-2",
-     "name": "장소20-2",
-     "type": "공원",
-     "lat": 35.6825,
-     "lon": 139.81966,
-     "defaultStayMin": 120,
-     "rating": 3.8,
+     "lat": 35.70023,
+     "lon": 139.69491,
+     "defaultStayMin": 90,
+     "rating": 3.5,
      "costPerPerson": 2000,
-     "indoor": true,
-     "lines": [
-      "Y"
-     ]
+     "indoor": false,
+     "stations": {
+      "G": 0.538,
+      "Y": 0.439
+     }
     }
    },
    "city": {
@@ -117,120 +101,161 @@
     },
     "fuelPerKm": 12
    },
-   "planMode": "balance",
-   "dayEnd": "20:00"
+   "planMode": "balance"
   },
-  "mode": "replace",
+  "mode": "fill",
   "cur": -1,
-  "position": 2,
+  "position": 1,
   "candidates": [
    {
     "id": "20-c0",
     "name": "장소20-c0",
-    "type": "신사·사찰",
-    "lat": 35.72011,
-    "lon": 139.7756,
+    "type": "시장",
+    "lat": 35.65611,
+    "lon": 139.70941,
     "defaultStayMin": 75,
-    "rating": 3.2,
-    "costPerPerson": 0,
+    "rating": 3.9,
+    "costPerPerson": 500,
     "indoor": true,
-    "lines": [
-     "Y"
-    ],
-    "open": "10:00",
-    "close": "20:00"
+    "stations": {
+     "H": 0.383
+    }
    },
    {
     "id": "20-c1",
     "name": "장소20-c1",
-    "type": "박물관",
-    "lat": 35.69747,
-    "lon": 139.76419,
-    "defaultStayMin": 120,
-    "rating": 3.3,
+    "type": "맛집",
+    "lat": 35.71975,
+    "lon": 139.74092,
+    "defaultStayMin": 75,
+    "rating": 4.0,
     "costPerPerson": 0,
-    "indoor": false,
-    "lines": [
-     "A",
-     "O"
-    ]
+    "indoor": true,
+    "stations": {
+     "G": 0.758
+    },
+    "open": "09:00",
+    "close": "17:00",
+    "lastEntry": "16:30"
    },
    {
     "id": "20-c2",
     "name": "장소20-c2",
     "type": "박물관",
-    "lat": 35.70733,
-    "lon": 139.81036,
-    "defaultStayMin": 90,
-    "rating": 4.5,
-    "costPerPerson": 1000,
+    "lat": 35.69618,
+    "lon": 139.76236,
+    "defaultStayMin": 75,
+    "rating": 3.2,
+    "costPerPerson": 500,
+    "indoor": false,
+    "stations": {},
+    "open": "10:00",
+    "close": "20:00"
+   },
+   {
+    "id": "20-c3",
+    "name": "장소20-c3",
+    "type": "박물관",
+    "lat": 35.70534,
+    "lon": 139.70601,
+    "defaultStayMin": 30,
+    "rating": 3.2,
+    "costPerPerson": 2000,
     "indoor": true,
-    "lines": [
-     "A"
-    ],
-    "open": "09:30",
-    "close": "16:30"
+    "stations": {
+     "O": 0.319
+    },
+    "open": "11:00",
+    "close": "22:00"
+   },
+   {
+    "id": "20-c4",
+    "name": "장소20-c4",
+    "type": "맛집",
+    "lat": 35.67611,
+    "lon": 139.72287,
+    "defaultStayMin": 60,
+    "rating": 4.8,
+    "costPerPerson": 0,
+    "indoor": false,
+    "stations": {
+     "O": 0.066,
+     "Y": 0.765
+    },
+    "open": "09:00",
+    "close": "17:00"
+   },
+   {
+    "id": "20-c5",
+    "name": "장소20-c5",
+    "type": "신사·사찰",
+    "lat": 35.68584,
+    "lon": 139.70898,
+    "defaultStayMin": 60,
+    "rating": 3.2,
+    "costPerPerson": 0,
+    "indoor": false,
+    "stations": {},
+    "open": "09:00",
+    "close": "17:00"
    }
   ]
  },
  "expected": [
   {
+   "placeId": "20-c4",
+   "name": "장소20-c4",
+   "position": 1,
+   "score": -18.8,
+   "detourMin": 30,
+   "arrive": "12:10",
+   "endAfter": "18:30",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용"
+   ],
+   "effect": "30분 돌아가요 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
    "placeId": "20-c1",
    "name": "장소20-c1",
-   "position": 2,
-   "score": -57.8,
-   "detourMin": -18,
-   "arrive": "13:40",
-   "endAfter": "15:40",
+   "position": 1,
+   "score": -6.0,
+   "detourMin": 38,
+   "arrive": "12:15",
+   "endAfter": "18:30",
    "absorbed": true,
    "sameType": false,
    "outsideHours": false,
    "newIssues": 0,
    "badges": [
     "기다리는 시간 활용",
-    "가는 길"
+    "실내"
    ],
-   "effect": "이동이 18분 줄어요 · 끝나는 시간 그대로",
+   "effect": "38분 돌아가요 · 끝나는 시간 그대로",
    "warning": null
   },
   {
-   "placeId": "20-c0",
-   "name": "장소20-c0",
-   "position": 2,
-   "score": -46.2,
-   "detourMin": -7,
-   "arrive": "13:50",
-   "endAfter": "15:05",
+   "placeId": "20-c3",
+   "name": "장소20-c3",
+   "position": 1,
+   "score": 1.8,
+   "detourMin": 41,
+   "arrive": "12:20",
+   "endAfter": "18:30",
    "absorbed": true,
    "sameType": false,
    "outsideHours": false,
    "newIssues": 0,
    "badges": [
     "기다리는 시간 활용",
-    "가는 길",
     "실내"
    ],
-   "effect": "이동이 7분 줄어요 · 끝나는 시간 그대로",
-   "warning": null
-  },
-  {
-   "placeId": "20-c2",
-   "name": "장소20-c2",
-   "position": 2,
-   "score": -43.0,
-   "detourMin": 4,
-   "arrive": "14:00",
-   "endAfter": "15:30",
-   "absorbed": true,
-   "sameType": false,
-   "outsideHours": false,
-   "newIssues": 0,
-   "badges": [
-    "기다리는 시간 활용",
-    "가는 길",
-    "실내"
-   ],
-   "effect": "4분 돌아가요 · 끝나는 시간 그대로",
+   "effect": "41분 돌아가요 · 끝나는 시간 그대로",
    "warning": null
   }
  ]

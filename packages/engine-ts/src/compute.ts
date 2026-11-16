@@ -10,12 +10,12 @@ export function stayOf(day: Day, item: { placeId: string; stayMin?: number | nul
 
 export function endpoints(day: Day): Endpoint[] {
   const out: Endpoint[] = [];
-  if (day.startPoint) out.push({ id: START, lat: day.startPoint.lat, lon: day.startPoint.lon, lines: [] });
+  if (day.startPoint) out.push({ id: START, lat: day.startPoint.lat, lon: day.startPoint.lon });
   for (const item of day.items) {
     const p = day.places[item.placeId]!;
-    out.push({ id: p.id, lat: p.lat, lon: p.lon, lines: p.lines ?? [] });
+    out.push({ id: p.id, lat: p.lat, lon: p.lon, stations: p.stations ?? {} });
   }
-  if (day.endPoint) out.push({ id: END, lat: day.endPoint.lat, lon: day.endPoint.lon, lines: [] });
+  if (day.endPoint) out.push({ id: END, lat: day.endPoint.lat, lon: day.endPoint.lon });
   return out;
 }
 

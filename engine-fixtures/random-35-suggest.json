@@ -11,39 +11,92 @@
     },
     {
      "placeId": "35-1"
+    },
+    {
+     "placeId": "35-2"
+    },
+    {
+     "placeId": "35-3"
+    },
+    {
+     "placeId": "35-4"
     }
    ],
    "places": {
     "35-0": {
      "id": "35-0",
      "name": "장소35-0",
-     "type": "시장",
-     "lat": 35.6552,
-     "lon": 139.69345,
-     "defaultStayMin": 75,
-     "rating": 3.9,
-     "costPerPerson": 500,
+     "type": "신사·사찰",
+     "lat": 35.67635,
+     "lon": 139.80043,
+     "defaultStayMin": 30,
+     "rating": 4.3,
+     "costPerPerson": 1000,
      "indoor": false,
-     "lines": [
-      "A"
-     ],
-     "open": "10:00",
-     "close": "20:00"
+     "stations": {
+      "H": 0.173
+     },
+     "open": "09:00",
+     "close": "17:00"
     },
     "35-1": {
      "id": "35-1",
      "name": "장소35-1",
      "type": "맛집",
-     "lat": 35.68041,
-     "lon": 139.71841,
-     "defaultStayMin": 45,
-     "rating": 4.2,
-     "costPerPerson": 500,
+     "lat": 35.68475,
+     "lon": 139.81818,
+     "defaultStayMin": 120,
+     "rating": 4.7,
+     "costPerPerson": 0,
      "indoor": false,
-     "lines": [
-      "A",
-      "O"
-     ],
+     "stations": {
+      "M": 0.433
+     },
+     "open": "09:30",
+     "close": "16:30"
+    },
+    "35-2": {
+     "id": "35-2",
+     "name": "장소35-2",
+     "type": "카페 거리",
+     "lat": 35.67232,
+     "lon": 139.79414,
+     "defaultStayMin": 120,
+     "rating": 3.5,
+     "costPerPerson": 0,
+     "indoor": false,
+     "stations": {},
+     "closed": true
+    },
+    "35-3": {
+     "id": "35-3",
+     "name": "장소35-3",
+     "type": "맛집",
+     "lat": 35.65139,
+     "lon": 139.75859,
+     "defaultStayMin": 120,
+     "rating": 3.7,
+     "costPerPerson": 500,
+     "indoor": true,
+     "stations": {
+      "H": 0.409
+     },
+     "open": "09:30",
+     "close": "16:30"
+    },
+    "35-4": {
+     "id": "35-4",
+     "name": "장소35-4",
+     "type": "박물관",
+     "lat": 35.67349,
+     "lon": 139.72327,
+     "defaultStayMin": 60,
+     "rating": 4.7,
+     "costPerPerson": 1000,
+     "indoor": false,
+     "stations": {
+      "M": 0.436
+     },
      "open": "11:00",
      "close": "22:00"
     }
@@ -100,165 +153,124 @@
     },
     "fuelPerKm": 12
    },
-   "planMode": "fast"
+   "planMode": "fast",
+   "dayEnd": "20:00"
   },
-  "mode": "fill",
+  "mode": "replace",
   "cur": -1,
-  "position": 2,
+  "position": 4,
   "candidates": [
    {
     "id": "35-c0",
     "name": "장소35-c0",
-    "type": "신사·사찰",
-    "lat": 35.66863,
-    "lon": 139.7819,
-    "defaultStayMin": 75,
-    "rating": 4.0,
-    "costPerPerson": 1000,
-    "indoor": false,
-    "lines": [
-     "G"
-    ],
-    "open": "09:30",
-    "close": "16:30"
-   },
-   {
-    "id": "35-c1",
-    "name": "장소35-c1",
-    "type": "전망",
-    "lat": 35.7162,
-    "lon": 139.68319,
-    "defaultStayMin": 45,
-    "rating": 4.4,
-    "costPerPerson": 2000,
-    "indoor": false,
-    "lines": [
-     "A",
-     "O"
-    ],
-    "open": "11:00",
-    "close": "22:00"
-   },
-   {
-    "id": "35-c2",
-    "name": "장소35-c2",
     "type": "시장",
-    "lat": 35.65093,
-    "lon": 139.69032,
-    "defaultStayMin": 90,
-    "rating": 3.4,
-    "costPerPerson": 0,
-    "indoor": true,
-    "lines": [
-     "Y"
-    ]
-   },
-   {
-    "id": "35-c3",
-    "name": "장소35-c3",
-    "type": "공원",
-    "lat": 35.71154,
-    "lon": 139.77656,
-    "defaultStayMin": 45,
-    "rating": 4.9,
-    "costPerPerson": 2000,
-    "indoor": true,
-    "lines": [
-     "M"
-    ],
-    "open": "09:00",
-    "close": "17:00",
-    "lastEntry": "16:30"
-   },
-   {
-    "id": "35-c4",
-    "name": "장소35-c4",
-    "type": "박물관",
-    "lat": 35.7299,
-    "lon": 139.72453,
+    "lat": 35.68501,
+    "lon": 139.69354,
     "defaultStayMin": 30,
-    "rating": 4.1,
-    "costPerPerson": 0,
-    "indoor": false,
-    "lines": [
-     "G"
-    ],
+    "rating": 4.6,
+    "costPerPerson": 1000,
+    "indoor": true,
+    "stations": {
+     "M": 0.095,
+     "Y": 0.367
+    },
     "open": "09:00",
     "close": "17:00"
    },
    {
-    "id": "35-c5",
-    "name": "장소35-c5",
-    "type": "시장",
-    "lat": 35.68269,
-    "lon": 139.80432,
+    "id": "35-c1",
+    "name": "장소35-c1",
+    "type": "박물관",
+    "lat": 35.65545,
+    "lon": 139.69185,
+    "defaultStayMin": 30,
+    "rating": 4.9,
+    "costPerPerson": 500,
+    "indoor": true,
+    "stations": {
+     "M": 0.459
+    },
+    "closed": true
+   },
+   {
+    "id": "35-c2",
+    "name": "장소35-c2",
+    "type": "공원",
+    "lat": 35.65043,
+    "lon": 139.68852,
     "defaultStayMin": 60,
-    "rating": 4.8,
+    "rating": 3.7,
     "costPerPerson": 500,
     "indoor": false,
-    "lines": [
-     "H",
-     "O"
-    ],
+    "stations": {
+     "A": 0.566,
+     "H": 0.667
+    },
     "open": "09:00",
-    "close": "17:00",
-    "lastEntry": "16:30"
+    "close": "17:00"
    }
   ]
  },
  "expected": [
   {
-   "placeId": "35-c2",
-   "name": "장소35-c2",
-   "position": 0,
-   "score": -10.4,
-   "detourMin": 10,
-   "arrive": "08:30",
-   "endAfter": "12:30",
-   "absorbed": false,
-   "sameType": false,
-   "outsideHours": false,
+   "placeId": "35-c1",
+   "name": "장소35-c1",
+   "position": 4,
+   "score": -12.4,
+   "detourMin": -18,
+   "arrive": "18:20",
+   "endAfter": "18:50",
+   "absorbed": true,
+   "sameType": true,
+   "outsideHours": true,
    "newIssues": 0,
    "badges": [
+    "기다리는 시간 활용",
+    "비슷한 곳",
     "가는 길",
     "실내"
    ],
-   "effect": "10분 돌아가요 · 끝나는 시간 10분 늦어져요",
-   "warning": null
+   "effect": "이동이 18분 줄어요 · 끝나는 시간 그대로",
+   "warning": "영업시간 밖이에요"
   },
   {
-   "placeId": "35-c1",
-   "name": "장소35-c1",
-   "position": 2,
-   "score": -4.4,
-   "detourMin": 22,
-   "arrive": "12:45",
-   "endAfter": "13:30",
-   "absorbed": false,
+   "placeId": "35-c0",
+   "name": "장소35-c0",
+   "position": 4,
+   "score": 17.4,
+   "detourMin": -15,
+   "arrive": "18:20",
+   "endAfter": "18:50",
+   "absorbed": true,
    "sameType": false,
-   "outsideHours": false,
-   "newIssues": 0,
-   "badges": [],
-   "effect": "22분 돌아가요 · 끝나는 시간 70분 늦어져요",
-   "warning": null
-  },
-  {
-   "placeId": "35-c3",
-   "name": "장소35-c3",
-   "position": 2,
-   "score": -1.4,
-   "detourMin": 28,
-   "arrive": "12:50",
-   "endAfter": "13:35",
-   "absorbed": false,
-   "sameType": false,
-   "outsideHours": false,
+   "outsideHours": true,
    "newIssues": 0,
    "badges": [
+    "기다리는 시간 활용",
+    "가는 길",
     "실내"
    ],
-   "effect": "28분 돌아가요 · 끝나는 시간 75분 늦어져요",
-   "warning": null
+   "effect": "이동이 15분 줄어요 · 끝나는 시간 그대로",
+   "warning": "영업시간 밖이에요"
+  },
+  {
+   "placeId": "35-c2",
+   "name": "장소35-c2",
+   "position": 4,
+   "score": 35.8,
+   "detourMin": -2,
+   "arrive": "18:35",
+   "endAfter": "19:35",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": true,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "가는 길"
+   ],
+   "effect": "이동이 2분 줄어요 · 끝나는 시간 그대로",
+   "warning": "영업시간 밖이에요"
   }
  ]
 }

@@ -11,12 +11,14 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from itinerary_engine.config import constants
 from itinerary_engine.generate import Profile
 from itinerary_engine.models import City as EngineCity
 from itinerary_engine.models import Place as EnginePlace
 from whyuseguide_api.db.models import City, Place, PlaceClosure, PlaceHours, PlaceStatus, PlaceTag
 
-NEAR_STOP_M = 500  # 이 거리 안 역의 노선을 장소의 노선으로 본다(근사 경로 §5.3)
+# 이 거리 안 역의 노선을 장소에서 탈 수 있는 노선으로 본다(근사 경로 §5.3 STATION_KM_MAX)
+NEAR_STOP_M = round(constants()["approx"]["stationKmMax"] * 1000)
 TRANSFER_M = 300  # 서로 이 거리 안에 역이 있으면 두 노선은 환승할 수 있다고 본다
 
 
@@ -43,21 +45,27 @@ async def city_network(session: AsyncSession, city_id: uuid.UUID) -> EngineCity:
     return EngineCity.model_validate({"lineLinks": [(r.a, r.b) for r in rows], **fare})
 
 
-async def place_lines(session: AsyncSession, place_ids: list[uuid.UUID]) -> dict[uuid.UUID, tuple[str, ...]]:
+async def place_stations(
+    session: AsyncSession, place_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, dict[str, float]]:
+    """장소별 {노선 id: 그 노선의 가장 가까운 역까지 km}. 역이 없는 장소는 빠진다(엔진은 빈 값 = 역이 멂)."""
     if not place_ids:
         return {}
     rows = await session.execute(
         text(
             """
-            SELECT p.id AS pid, array_agg(DISTINCT sl.line_id::text) AS lines
+            SELECT p.id AS pid, sl.line_id::text AS line, min(ST_Distance(s.location, p.location)) AS m
             FROM places p JOIN stops s ON ST_DWithin(s.location, p.location, :m)
             JOIN stop_lines sl ON sl.stop_id = s.id
-            WHERE p.id = ANY(:ids) GROUP BY p.id
+            WHERE p.id = ANY(:ids) GROUP BY p.id, sl.line_id
             """
         ),
         {"ids": place_ids, "m": NEAR_STOP_M},
     )
-    return {r.pid: tuple(sorted(r.lines)) for r in rows}
+    out: dict[uuid.UUID, dict[str, float]] = defaultdict(dict)
+    for r in rows:
+        out[r.pid][r.line] = round(r.m / 1000, 3)
+    return out
 
 
 async def engine_places(
@@ -89,7 +97,7 @@ async def engine_places(
             )
         ).scalars()
     )
-    lines = await place_lines(session, place_ids)
+    stations = await place_stations(session, place_ids)
     out: dict[str, EnginePlace] = {}
     for p in places:
         today = [h for h in hours[p.id] if h.weekday == on.weekday()]
@@ -113,7 +121,7 @@ async def engine_places(
             closed=closed,
             indoor=p.indoor,
             parking_fee=p.parking_fee or 0,
-            lines=lines.get(p.id, ()),
+            stations=dict(sorted(stations.get(p.id, {}).items())),
         )
     return out
 

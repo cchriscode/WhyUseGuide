@@ -151,18 +151,26 @@ def cmd_benchmark(city: str, pairs: int, seed: int) -> int:
             f"{settings.otp_url}/otp/gtfs/v1", json={"query": "{ agencies { gtfsId name } }"}
         ).json()["data"]["agencies"]
         banned = ",".join(a["gtfsId"] for a in agencies if a["name"] in approx_operators)
-        otp = benchmark.OtpPlanner(client, settings.otp_url)
-        otp_free_only = benchmark.OtpPlanner(client, settings.otp_url, banned_agencies=banned)
+        estimated = frozenset(approx_operators)
+        otp = benchmark.OtpPlanner(client, settings.otp_url, estimated_agencies=estimated)
+        otp_free_only = benchmark.OtpPlanner(
+            client, settings.otp_url, banned_agencies=banned, estimated_agencies=estimated
+        )
         reports = []
         for name, ours, ref in (
             ("otp-vs-approx (우리=엔진 근사식, 기준=OTP)", benchmark.approx_planner(city_model), otp),
             ("free-data-impact (우리=메트로·도에이만, 기준=근사 노선 포함)", otp_free_only, otp),
         ):
-            m, detail = benchmark.run(sample, ours, ref)
-            reports.append(benchmark.report(name, m, detail))
+            m, detail, segments = benchmark.run(sample, ours, ref)
+            reports.append(benchmark.report(name, m, detail, segments))
             print(name)
             for key, value in vars(m).items():
                 print(f"  {key}: {value}")
+            for seg, sm in segments.items():
+                print(
+                    f"  [{seg}] n={sm.compared} median={sm.median_abs_diff_min} "
+                    f"within5={sm.within_5_min_pct}% within10={sm.within_10_min_pct}% mean={sm.mean_diff_min}"
+                )
     out = RAW_DIR / "benchmarks" / f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}.json"
     benchmark.save(out, reports)
     print(f"saved {out.relative_to(RAW_DIR)} (pairs={len(sample)})")

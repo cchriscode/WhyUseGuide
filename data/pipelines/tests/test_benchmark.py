@@ -1,4 +1,4 @@
-from whyuseguide_pipelines.benchmark import Spot, Summary, metrics, sample_pairs
+from whyuseguide_pipelines.benchmark import SEGMENTS, Spot, Summary, metrics, sample_pairs, segment
 
 
 def test_metrics() -> None:
@@ -13,6 +13,7 @@ def test_metrics() -> None:
     assert (m.pairs, m.failed_ours, m.failed_ref, m.compared) == (5, 1, 1, 3)
     assert m.median_abs_diff_min == 2
     assert m.within_5_min_pct == 66.7
+    assert m.within_10_min_pct == 100.0
     assert m.mean_diff_min == -2.3
     assert m.transfers_match_pct == 66.7
     assert m.first_route_match_pct == 50.0  # 노선이 있는 2건 중 1건
@@ -24,7 +25,7 @@ def test_metrics_empty() -> None:
 
 
 def spots() -> list[Spot]:
-    return [Spot(f"s{i}", f"s{i}", 35.65 + 0.01 * (i % 7), 139.65 + 0.015 * (i // 7), ()) for i in range(40)]
+    return [Spot(f"s{i}", f"s{i}", 35.65 + 0.01 * (i % 7), 139.65 + 0.015 * (i // 7)) for i in range(40)]
 
 
 def test_sample_pairs_is_fixed_by_seed_and_respects_distance() -> None:
@@ -34,3 +35,11 @@ def test_sample_pairs_is_fixed_by_seed_and_respects_distance() -> None:
     assert len(a) == 30
     assert len({(x.id, y.id) for x, y in a}) == 30
     assert sample_pairs(spots(), 30, seed=2) != a
+
+
+def test_segment_separates_real_timetables_from_estimates() -> None:
+    near_a, near_b = Spot("a", "a", 35.7, 139.7, {"L1": 0.2}), Spot("b", "b", 35.7, 139.8, {"L1": 0.3})
+    far = Spot("c", "c", 35.7, 139.9)
+    assert segment(near_a, near_b, Summary(30, 0, "r1")) == SEGMENTS[0]
+    assert segment(near_a, near_b, Summary(30, 0, "jr", estimated=True)) == SEGMENTS[1]
+    assert segment(near_a, far, Summary(30, 0, "r1")) == SEGMENTS[2]

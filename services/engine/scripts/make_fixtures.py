@@ -275,7 +275,11 @@ def random_place(rng: random.Random, pid: str) -> dict[str, Any]:
         "rating": round(3.0 + rng.random() * 2, 1),
         "costPerPerson": rng.choice([0, 0, 500, 1000, 2000]),
         "indoor": rng.random() < 0.4,
-        "lines": sorted(rng.sample(LINES, rng.choice([1, 1, 2]))),
+        # 노선 id → 가장 가까운 역까지 km. 가끔 역이 먼 장소(빈 값)도 섞는다.
+        "stations": {
+            ln: round(0.05 + rng.random() * 0.75, 3)
+            for ln in sorted(rng.sample(LINES, rng.choice([0, 1, 1, 2])))
+        },
     }
     roll = rng.random()
     if roll < 0.5:

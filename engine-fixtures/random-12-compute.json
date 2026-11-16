@@ -4,7 +4,7 @@
  "input": {
   "day": {
    "date": "2026-10-27",
-   "start": "09:00",
+   "start": "08:30",
    "items": [
     {
      "placeId": "12-0"
@@ -20,49 +20,49 @@
     "12-0": {
      "id": "12-0",
      "name": "장소12-0",
-     "type": "카페 거리",
-     "lat": 35.71319,
-     "lon": 139.71188,
+     "type": "신사·사찰",
+     "lat": 35.68249,
+     "lon": 139.76038,
      "defaultStayMin": 75,
-     "rating": 3.6,
-     "costPerPerson": 0,
+     "rating": 4.4,
+     "costPerPerson": 500,
      "indoor": false,
-     "lines": [
-      "A",
-      "G"
-     ]
+     "stations": {
+      "M": 0.747
+     }
     },
     "12-1": {
      "id": "12-1",
      "name": "장소12-1",
-     "type": "맛집",
-     "lat": 35.65598,
-     "lon": 139.71241,
-     "defaultStayMin": 30,
-     "rating": 3.5,
-     "costPerPerson": 0,
-     "indoor": true,
-     "lines": [
-      "O"
-     ],
-     "open": "11:00",
-     "close": "22:00"
+     "type": "신사·사찰",
+     "lat": 35.68343,
+     "lon": 139.69906,
+     "defaultStayMin": 120,
+     "rating": 3.7,
+     "costPerPerson": 500,
+     "indoor": false,
+     "stations": {
+      "Y": 0.504
+     },
+     "open": "09:30",
+     "close": "16:30"
     },
     "12-2": {
      "id": "12-2",
      "name": "장소12-2",
-     "type": "전망",
-     "lat": 35.66545,
-     "lon": 139.68609,
-     "defaultStayMin": 30,
-     "rating": 3.8,
-     "costPerPerson": 0,
-     "indoor": false,
-     "lines": [
-      "G"
-     ],
-     "open": "10:00",
-     "close": "20:00"
+     "type": "공원",
+     "lat": 35.69835,
+     "lon": 139.73473,
+     "defaultStayMin": 45,
+     "rating": 3.3,
+     "costPerPerson": 2000,
+     "indoor": true,
+     "stations": {
+      "H": 0.377
+     },
+     "open": "09:00",
+     "close": "17:00",
+     "lastEntry": "16:30"
     }
    },
    "city": {
@@ -117,41 +117,19 @@
     },
     "fuelPerKm": 12
    },
-   "planMode": "balance",
-   "startPoint": {
-    "lat": 35.69,
-    "lon": 139.7
-   },
-   "endPoint": {
-    "lat": 35.69,
-    "lon": 139.7
-   }
+   "planMode": "balance"
   }
  },
  "expected": {
   "rows": [
    {
-    "kind": "leg",
-    "from": "@start",
-    "to": "12-0",
-    "mode": "transit",
-    "minutes": 27,
-    "fare": 180,
-    "km": 3.63,
-    "estimated": true,
-    "transfers": 2,
-    "label": "",
-    "delayMin": 0,
-    "breakMin": 0
-   },
-   {
     "kind": "stop",
     "placeId": "12-0",
     "name": "장소12-0",
-    "arrive": "09:30",
+    "arrive": "08:30",
     "wait": 0,
-    "start": "09:30",
-    "end": "10:45",
+    "start": "08:30",
+    "end": "09:45",
     "stayMin": 75,
     "issue": null,
     "fixedAt": null
@@ -161,11 +139,11 @@
     "from": "12-0",
     "to": "12-1",
     "mode": "transit",
-    "minutes": 36,
+    "minutes": 55,
     "fare": 210,
-    "km": 8.27,
+    "km": 7.2,
     "estimated": true,
-    "transfers": 2,
+    "transfers": 1,
     "label": "",
     "delayMin": 0,
     "breakMin": 0
@@ -174,11 +152,11 @@
     "kind": "stop",
     "placeId": "12-1",
     "name": "장소12-1",
-    "arrive": "11:25",
+    "arrive": "10:40",
     "wait": 0,
-    "start": "11:25",
-    "end": "11:55",
-    "stayMin": 30,
+    "start": "10:40",
+    "end": "12:40",
+    "stayMin": 120,
     "issue": null,
     "fixedAt": null
    },
@@ -187,11 +165,11 @@
     "from": "12-1",
     "to": "12-2",
     "mode": "transit",
-    "minutes": 26,
+    "minutes": 44,
     "fare": 180,
-    "km": 3.38,
+    "km": 4.71,
     "estimated": true,
-    "transfers": 2,
+    "transfers": 1,
     "label": "",
     "delayMin": 0,
     "breakMin": 0
@@ -200,34 +178,20 @@
     "kind": "stop",
     "placeId": "12-2",
     "name": "장소12-2",
-    "arrive": "12:25",
+    "arrive": "13:25",
     "wait": 0,
-    "start": "12:25",
-    "end": "12:55",
-    "stayMin": 30,
+    "start": "13:25",
+    "end": "14:10",
+    "stayMin": 45,
     "issue": null,
     "fixedAt": null
-   },
-   {
-    "kind": "leg",
-    "from": "12-2",
-    "to": "@end",
-    "mode": "transit",
-    "minutes": 27,
-    "fare": 180,
-    "km": 3.91,
-    "estimated": true,
-    "transfers": 2,
-    "label": "",
-    "delayMin": 0,
-    "breakMin": 0
    }
   ],
   "totals": {
-   "moveMin": 116,
-   "farePerPerson": 750,
-   "spendPerPerson": 750,
-   "end": "12:55",
+   "moveMin": 99,
+   "farePerPerson": 390,
+   "spendPerPerson": 3390,
+   "end": "14:10",
    "issues": 0,
    "overEnd": false
   }

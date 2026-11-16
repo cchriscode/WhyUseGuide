@@ -12,7 +12,7 @@ def endpoints(day: Day) -> list[Endpoint]:
         out.append(Endpoint(START, day.start_point.lat, day.start_point.lon))
     for item in day.items:
         p = day.places[item.place_id]
-        out.append(Endpoint(p.id, p.lat, p.lon, p.lines))
+        out.append(Endpoint(p.id, p.lat, p.lon, p.stations))
     if day.end_point:
         out.append(Endpoint(END, day.end_point.lat, day.end_point.lon))
     return out
