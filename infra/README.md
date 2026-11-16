@@ -28,8 +28,13 @@ curl http://localhost:8000/health   # db·redis·otp 모두 ok면 200
 
 ```bash
 (cd services/api && uv run alembic upgrade head)   # 스키마 + 일본·도쿄 기본 행
-uv run wug-data fetch && uv run wug-data load-db   # 역·노선 적재 (data/pipelines/README.md)
+uv run wug-data fetch                              # 원자료 내려받기 (ODPT 토큰은 .env의 ODPT_TOKEN)
+uv run wug-data build-approx                       # 근사 노선 GTFS (approx_lines.toml)
+uv run wug-data build-odpt-gtfs                    # 유리카모메: ODPT 역 시간표 → GTFS
+uv run wug-data load-db                            # 역·노선 적재 (data/pipelines/README.md)
 uv run wug-data load-fares                         # 도시별 근사 운임 (data/pipelines/city_fares.toml)
+uv run wug-data load-places                        # 장소 후보 (Wikidata)
+uv run wug-data load-place-reviews                 # 장소 검수 결과 반영 (data/pipelines/place_reviews/)
 uv run wug-data stage-otp                          # GTFS를 OTP 입력으로 넣은 뒤 그래프 다시 빌드
 ```
 

@@ -22,6 +22,8 @@
    | 노선망 SQL(환승 가능 노선, 가까운 역) | `whyuseguide_api/network.py` |
    | 데이터 출처·라이선스 | `data/pipelines/sources.toml` |
    | 도시별 근사 운임(출처·확인일 포함) | `data/pipelines/city_fares.toml` → `wug-data load-fares` |
+   | 장소 검수 결과(운영 여부·영업시간·요금, 출처·확인 수준) | `data/pipelines/place_reviews/<도시>.json` → `wug-data load-place-reviews` |
+   | 우리가 만드는 GTFS 쓰기(근사 노선, ODPT 역 시간표 변환) | `whyuseguide_pipelines/gtfs_write.py` |
    | 근사 노선과 그 지역 값(영역, 시간대, 원자료 출처) | `data/pipelines/approx_lines.toml` |
    | 장소 유형·식사 유형, 평가 반영 수치 | `constants.json`의 `placeTypes`·`mealTypes`·`feedback` |
    | 평가 태그 코드 | `itinerary_engine.feedback.RatingTag` |
