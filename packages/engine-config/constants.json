@@ -22,6 +22,11 @@
   "dayTripMaxMin": 120,
   "placesPerDay": { "relaxed": 4, "normal": 6, "packed": 7 },
   "meals": { "lunch": ["12:00", 60], "dinner": ["18:30", 60] },
+  "mealTypes": { "lunch": ["맛집", "시장"], "dinner": ["맛집", "바 골목", "시장"] },
+  "placeTypes": [
+    "신사·사찰", "박물관", "시장", "골목 상점가", "전망", "바 골목", "체험", "정원",
+    "야경", "맛집", "공원", "카페 거리", "서점", "쇼핑", "휴게소", "숙박 거점"
+  ],
   "approx": {
     "routeFactor": 1.3,
     "walkMetersPerMin": 75,
@@ -42,7 +47,10 @@
     "localMixShift": 15,
     "crowdedMixShift": 10,
     "voteTagWeight": 0.1,
-    "differentTypesMaxStars": 2
+    "differentTypesMaxStars": 2,
+    "avoidTypePenalty": 0.1,
+    "crowdPopularityMin": 4,
+    "crowdMorningEnd": "12:00"
   },
   "candidateScore": { "taste": 0.5, "rating": 0.3, "popularity": 0.2 },
   "suggestScore": {

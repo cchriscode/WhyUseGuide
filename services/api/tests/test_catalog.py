@@ -34,6 +34,14 @@ def test_place_search_shows_only_active(client: TestClient, db: Engine) -> None:
     assert client.get("/v1/places", params={"city": "tokyo", "q": "숨김"}).json() == []
 
 
+def test_place_search_by_type_rejects_unknown_types(client: TestClient) -> None:
+    """유형은 constants.json의 placeTypes만 받는다. 오타는 빈 결과가 아니라 422."""
+    ok = client.get("/v1/places", params={"city": "tokyo", "type": "박물관"})
+    assert ok.status_code == 200 and {p["type"] for p in ok.json()} == {"박물관"}
+    bad = client.get("/v1/places", params={"city": "tokyo", "type": "박물 관"})
+    assert bad.status_code == 422 and bad.json()["error"]["code"] == "unknown_type"
+
+
 def test_place_search_near_is_sorted_by_distance(client: TestClient, db: Engine) -> None:
     r = client.get("/v1/places", params={"city": "tokyo", "near": "35.7148,139.7967", "limit": 3})
     rows = r.json()

@@ -357,7 +357,7 @@ P0는 MVP 출시에 반드시 필요, P1은 MVP에 넣되 일정이 밀리면 �
 1. **후보 점수:** 장소마다 score = 0.5 × 취향 일치도(사용자 취향 벡터와 장소 태그 벡터의 코사인) + 0.3 × 평점 정규화 + 0.2 × 유명도 적합도(슬라이더 값과 장소 유명도 등급 1\~5의 거리). 예약 입력 장소는 무조건 포함. 후보는 거점 지역 안 장소만 쓴다(지역 한정이면 고른 동네 안, 당일치기 날이면 그 지역 안, 13.4).
 2. **하루 장소 수:** 여유 4, 보통 6, 알차게 7 (식사 장소 포함).
 3. **날짜별 묶기:** 상위 후보를 위치 기준 k-평균(k = 일수)으로 묶고, 묶음마다 상위 N곳 선택. 휴무일인 장소는 그 날 묶음에서 제외. 자동차 여행은 13.4 거시 계획이 날짜를 나누므로 이 단계를 건너뛴다.
-4. **식사 배치:** 맛집·시장 유형 1곳을 12:00±60분, 저녁 유형 1곳을 18:30±60분 시간창에 둔다.
+4. **식사 배치:** 점심 유형(맛집·시장) 1곳을 12:00±60분, 저녁 유형(맛집·바 골목·시장) 1곳을 18:30±60분 시간창에 둔다. 장소 유형 목록과 식사 유형은 `constants.json`의 `placeTypes`·`mealTypes`에 둔다.
 5. **순서:** 시간창이 있는 외판원 문제(OR-Tools 라우팅, 시간창 = 영업시간·예약·식사 창). 이동 시간 행렬은 OTP로 구한다. 해가 없으면 평점 낮은 장소부터 하나씩 빼고 다시 푼다.
 6. **이동 상한 맞추기:** 하루 이동 합이 상한을 넘으면 가까운 곳으로 교체한다. 대중교통 여행은 균형 모드 관광 이동 합과 MOVE\_CAP × 도시 계수 × 평가 보정을, 자동차 여행은 운전 합과 DRIVE\_CAP × 평가 보정을 비교한다 (13.4).
    - 교체 대상: 예약 장소를 뺀 장소 중, 빼면 이동 시간이 가장 많이 줄어드는 곳. 식사 장소는 같은 식사 유형 후보로만 바꾼다.
@@ -419,19 +419,20 @@ P0는 MVP 출시에 반드시 필요, P1은 MVP에 넣되 일정이 밀리면 �
 
 ### 5.6 평가 반영 규칙 (MVP)
 
-| 입력 | 다음 날 재생성에 반영 |
+| 입력 (태그 코드) | 다음 날 재생성에 반영 |
 | --- | --- |
-| 이동이 길었어요 | 하루 이동 상한 −20% (평가 보정 × 0.8, MOVE\_CAP·DRIVE\_CAP 모두. 예: 보통 90분 → 72분) |
-| 일정이 빡빡했어요 | 하루 장소 수 −1, 장소 사이 여유 10분 추가 |
-| 여유로웠어요 | 하루 장소 수 +1 허용 |
-| 로컬 스팟 좋았어요 | 유명↔로컬 슬라이더 +15 |
-| 사람이 너무 많았어요 | 유명도 1\~2 장소는 오전 시간창 우선, 슬라이더 +10 |
-| 대기 줄이 길었어요 | 예약 가능 장소는 예약 버튼 먼저 노출 |
+| 이동이 길었어요 (`long_moves`) | 하루 이동 상한 −20% (평가 보정 × 0.8, MOVE\_CAP·DRIVE\_CAP 모두. 예: 보통 90분 → 72분) |
+| 일정이 빡빡했어요 (`too_tight`) | 하루 장소 수 −1, 장소 사이 여유 10분 추가 |
+| 여유로웠어요 (`relaxed`) | 하루 장소 수 +1 허용 |
+| 로컬 스팟 좋았어요 (`local_good`) | 유명↔로컬 슬라이더 +15 |
+| 사람이 너무 많았어요 (`crowded`) | 유명한 곳(유명도 4\~5)은 오전 시간창(12:00 전) 우선, 슬라이더 +10 |
+| 대기 줄이 길었어요 (`long_queue`) | 예약 가능 장소는 예약 버튼 먼저 노출 |
+| 동선이 효율적 (`efficient_route`), 시간 안내 정확 (`accurate_times`) | 저장만 한다(반영 규칙 없음) |
 | 장소 좋아요 / 별로 | 그 장소 태그 가중치 +0.1 / −0.1 |
-| 별점 ≤ 2 | 다음 날은 오늘과 다른 유형 비중 상향 |
+| 별점 ≤ 2 | 다음 날은 오늘과 다른 유형 비중 상향 (오늘 간 유형의 후보 점수 −0.1) |
 | 정확도 "달랐어요" | 그날 구간을 검증 큐에 등록 (운영 확인) |
 
-위 표의 수치(× 0.8, −1, 10분, +1, +15, +10, ±0.1, 별점 ≤ 2)는 `constants.json`의 `feedback`에 두고, 미리보기 문구의 숫자도 그 값에서 만든다.
+유명도는 1(로컬) ~ 5(유명)다. 위 표의 수치(× 0.8, −1, 10분, +1, +15, +10, ±0.1, 별점 ≤ 2, 유명도 4 이상, 12:00, −0.1)는 `constants.json`의 `feedback`에 두고, 미리보기 문구의 숫자도 그 값에서 만든다.
 
 별점 ≥ 4이고 익명 공유에 동의한 코스는 (취향 유형 × 도시 × 코스) 단위로 집계해 2단계 추천 랭킹(F-26)에 쓴다.
 
@@ -444,7 +445,7 @@ PostgreSQL + PostGIS. 모든 테이블에 `id`(UUID), `created_at`, `updated_at`
 | 테이블 | 주요 컬럼 | 메모 |
 | --- | --- | --- |
 | cities | code(tokyo), name\_ko, timezone, currency, fare\_table(jsonb), launched(bool), move\_cap\_factor(numeric, 기본 1.0) | move\_cap\_factor: 도시 이동 특성 보정 (아래) |
-| places | city\_id, name\_ko, name\_local, name\_en, type(enum), indoor(bool), popularity(1\~5), rating(numeric), review\_count, default\_stay\_min, cost\_per\_person, currency, location, nearest\_stop\_id, bookable(bool), affiliate\_url, tip\_ko, parking\_fee(nullable), website, status(active/closed/hidden), verified\_at, source, source\_ref | type: 신사·사찰, 박물관, 시장, 골목 상점가, 전망, 바 골목, 체험, 정원, 야경, 맛집, 공원, 카페 거리, 서점, 쇼핑, 휴게소, 숙박 거점(자동차 여행 숙소 위치 후보, 13.4) |
+| places | city\_id, name\_ko, name\_local, name\_en, type(enum), indoor(bool), popularity(1 로컬 \~ 5 유명), rating(numeric), review\_count, default\_stay\_min, cost\_per\_person, currency, location, nearest\_stop\_id, bookable(bool), affiliate\_url, tip\_ko, parking\_fee(nullable), website, status(active/closed/hidden), verified\_at, source, source\_ref | type: 신사·사찰, 박물관, 시장, 골목 상점가, 전망, 바 골목, 체험, 정원, 야경, 맛집, 공원, 카페 거리, 서점, 쇼핑, 휴게소, 숙박 거점(자동차 여행 숙소 위치 후보, 13.4) |
 | areas | city\_id, name\_ko, boundary(geography(Polygon)) | 지역 한정용 동네 (편집팀 정의, 도쿄 MVP 8\~10곳) |
 | place\_hours | place\_id, weekday(0\~6), open\_time, close\_time, last\_entry\_time | 휴무일은 행 없음, 특별 휴무는 place\_closures |
 | place\_closures | place\_id, date, reason |  |
@@ -477,7 +478,7 @@ PostgreSQL + PostGIS. 모든 테이블에 `id`(UUID), `created_at`, `updated_at`
 | --- | --- | --- |
 | reviews | target\_type(place/stop/leg), target\_id, user\_id, text, rating, companion, tags(text\[\]), status | MVP는 시드 데이터만 노출 |
 | review\_keywords | target\_type, target\_id, keyword, count | 화면 키워드 칩 |
-| course\_ratings | trip\_day\_id, user\_id, stars, tags(text\[\]), route\_accuracy(ok/bit/off), apply\_next(bool), share\_anon(bool) |  |
+| course\_ratings | trip\_day\_id, user\_id, stars, tags(text\[\], 코드값), route\_accuracy(ok/bit/off), apply\_next(bool), share\_anon(bool) | (trip\_day\_id, user\_id) 유일 |
 | course\_place\_votes | course\_rating\_id, place\_id, vote(+1/−1) |  |
 
 **수익·크리에이터·분석**
@@ -511,7 +512,7 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 | POST /trips/{id}/days/{day}/checkin | 도착 체크 → cur\_index 증가 | F-11 |
 | GET /legs?from=&to=&mode=&depart= | 구간 상세(단계·다음 열차·폴리라인·역 후기) | F-11\~F-13, F-17 |
 | GET /alerts?city=&lines= | 운행 이상 정보 | F-14 |
-| POST /course-ratings | 코스 평가 제출 → 반영 결과 | F-24, F-25 |
+| POST /course-ratings | 코스 평가 제출 → 반영 결과. `tags`는 코드값(5.6 표). 같은 날을 다시 평가하면 409 `already_rated`(반영이 두 번 되지 않게 하루에 평가 하나) | F-24, F-25 |
 | GET /phrases?city=&situation= | 문장 카드 | F-22 |
 | POST /affiliate-clicks | 예약 클릭 기록 → 이동 URL 반환 | F-20 |
 | POST /events | 분석 이벤트 묶음 전송 | 10장 |

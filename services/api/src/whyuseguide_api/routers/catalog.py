@@ -9,6 +9,7 @@ from geoalchemy2.functions import ST_X, ST_Y, ST_Distance, ST_GeogFromText
 from sqlalchemy import cast, func, or_, select
 from sqlalchemy.types import Float
 
+from itinerary_engine.config import constants
 from whyuseguide_api.db.models import City, Place, PlaceHours, PlaceStatus, Stop
 from whyuseguide_api.deps import Session
 from whyuseguide_api.errors import ApiError
@@ -111,6 +112,8 @@ async def places(
             or_(Place.name_ko.ilike(pattern), Place.name_local.ilike(pattern), Place.name_en.ilike(pattern))
         )
     if type:
+        if type not in constants()["placeTypes"]:
+            raise ApiError(422, "unknown_type", f"모르는 장소 유형이에요: {type}")
         stmt = stmt.where(Place.type == type)
     distance = None
     if near:

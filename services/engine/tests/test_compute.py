@@ -17,6 +17,14 @@ def test_constants_match_shared_file() -> None:
     assert constants() == shared
 
 
+def test_place_types_have_one_definition() -> None:
+    """식사 유형과 픽스처가 쓰는 유형은 모두 constants.json의 placeTypes 안에 있다."""
+    types = set(constants()["placeTypes"])
+    assert len(types) == len(constants()["placeTypes"])
+    for meal in ("lunch", "dinner"):
+        assert set(constants()["mealTypes"][meal]) <= types
+
+
 def test_basic_timeline_rounds_arrival_to_5_minutes() -> None:
     d = day(
         [{"placeId": "A"}, {"placeId": "B", "stayMin": 90}],

@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import Connection, func, select, text
 from sqlalchemy.dialects.postgresql import insert
 
+from itinerary_engine.config import constants
 from whyuseguide_api.db.models import City, Place, PlaceStatus
 
 # Wikidata 분류(Q-ID) → PRD 장소 유형. 한 장소에 여럿이면 앞쪽이 이긴다.
@@ -23,6 +24,12 @@ WIKIDATA_TYPES: list[tuple[set[str], str]] = [
     ({"Q37654"}, "시장"),
     ({"Q570116"}, "체험"),  # 일반 관광 명소: 검수 때 유형을 다시 정한다
 ]
+_unknown = {t for _, t in WIKIDATA_TYPES} - set(constants()["placeTypes"])
+if _unknown:
+    raise ValueError(
+        f"WIKIDATA_TYPES에 정의되지 않은 장소 유형이 있다(constants.json placeTypes): {sorted(_unknown)}"
+    )
+
 DEFAULT_STAY = {"박물관": 90, "신사·사찰": 45}
 INDOOR_TYPES = {"박물관"}
 

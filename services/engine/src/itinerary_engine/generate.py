@@ -29,12 +29,10 @@ from itinerary_engine.models import (
 )
 from itinerary_engine.route import Endpoint, choose_leg
 
-AVOID_TYPE_PENALTY = 0.1  # 별점 2 이하였던 날의 유형(§5.6). 점수 범위 0~1 기준
-CROWD_POPULARITY = 4  # 이 유명도 이상은 붐빈다고 본다(§5.6 "사람이 너무 많았어요")
-CROWD_MORNING_END = "12:00"
-LUNCH_TYPES = {"맛집", "시장"}
-DINNER_TYPES = {"맛집", "바 골목", "시장"}
 PLAN_MODES: tuple[PlanMode, ...] = ("fast", "balance", "cheap")
+# 붐비는 곳을 오전에 못 넣을 때 순서 탐색에 매기는 분당 벌점(이동 1분 = 1).
+# 1분 늦을 때마다 이동 10분만큼 손해로 본다.
+CROWD_LATE_COST_PER_MIN = 10
 
 
 class Profile(EngineModel):
@@ -120,7 +118,7 @@ def candidate_score(inp: GenerateInput, place: Place, profile: Profile) -> float
         + w["popularity"] * fit
     )
     if place.type in inp.prefs.avoid_types:
-        score -= AVOID_TYPE_PENALTY
+        score -= constants()["feedback"]["avoidTypePenalty"]
     return float(score)
 
 
@@ -177,6 +175,7 @@ def solve_order(
 ) -> list[str] | None:
     """시간창 외판원(열린 경로). 해가 없으면 None."""
     c = constants()
+    fb = c["feedback"]
     places = inp.places[date]
     known = {(lg.from_id, lg.to_id, lg.plan_mode): lg for lg in inp.legs}
     start_ep = Endpoint(START, inp.start_point.lat, inp.start_point.lon) if inp.start_point else None
@@ -233,9 +232,9 @@ def solve_order(
             return None
         index = manager.NodeToIndex(i)
         time.CumulVar(index).SetRange(lo, hi)
-        if inp.prefs.crowd_avoid and inp.profiles.get(pid, Profile()).popularity >= CROWD_POPULARITY:
+        if inp.prefs.crowd_avoid and inp.profiles.get(pid, Profile()).popularity >= fb["crowdPopularityMin"]:
             # 오전 우선: 넘기면 분당 비용(강제는 아님)
-            time.SetCumulVarSoftUpperBound(index, to_min(CROWD_MORNING_END), 10)
+            time.SetCumulVarSoftUpperBound(index, to_min(fb["crowdMorningEnd"]), CROWD_LATE_COST_PER_MIN)
 
     params = pywrapcp.DefaultRoutingSearchParameters()
     params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
@@ -299,7 +298,7 @@ def generate(inp: GenerateInput) -> GenerateResult:
 
 
 def _meal_candidates(inp: GenerateInput, pool: list[str], date: str, meal: str) -> list[str]:
-    types = LUNCH_TYPES if meal == "lunch" else DINNER_TYPES
+    types = constants()["mealTypes"][meal]
     out = []
     for pid in pool:
         prof = inp.profiles.get(pid, Profile())
