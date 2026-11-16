@@ -73,13 +73,13 @@ def cmd_stage_otp(sources: list[Source]) -> int:
 
 
 def cmd_load_db(sources: list[Source]) -> int:
-    """검증을 통과한 GTFS의 역·노선을 DB(stops, lines, stop_lines)에 적재한다."""
+    """검증을 통과한 GTFS의 역·노선을 DB(stops, lines, stop_lines)에 적재한다. db = false인 출처는 뺀다."""
     with KOREAN_NAMES.open("rb") as f:
         edited = tomllib.load(f)
     names = KoreanNames(lines=edited.get("lines", {}), stops=edited.get("stops", {}))
     engine = create_engine(Settings().database_url)
     failed = 0
-    for s in (s for s in sources if s.kind == "gtfs"):
+    for s in (s for s in sources if s.kind == "gtfs" and s.db):
         path = RAW_DIR / s.id / s.filename
         report = validate_feed(path, date.today())
         if not report.ok or s.city is None:

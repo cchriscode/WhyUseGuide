@@ -35,6 +35,8 @@ def test_registry_loads() -> None:
     sources = load_sources()
     assert {s.id for s in sources} >= {"toei-train-gtfs", "mlit-n02-2025"}
     assert all(s.license and s.attribution for s in sources)
+    bus = next(s for s in sources if s.id == "toei-bus-gtfs")
+    assert bus.otp and not bus.db  # 버스는 OTP에만(근사식의 가까운 역은 철도 기준)
 
 
 def test_registry_rejects_duplicate_ids(tmp_path: Path) -> None:

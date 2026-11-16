@@ -25,6 +25,8 @@ class Source:
     estimated: bool = False
     query: str | None = None  # kind = sparql: data/pipelines 기준 쿼리 파일 경로
     token_env: str | None = None  # 받을 때 필요한 토큰의 환경 변수 이름(.env). 값은 저장소에 두지 않는다.
+    # 역·노선을 DB에 적재할지. 근사식(§5.3)의 "가까운 역"은 철도 기준이라 버스는 OTP에만 넣는다.
+    db: bool = True
 
     @property
     def local(self) -> bool:

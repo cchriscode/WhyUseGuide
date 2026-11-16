@@ -1,6 +1,7 @@
 # 데이터 출처 목록 (PRD §8 data_sources). 상업 이용 가능 여부는 docs/data-licenses.md.
 # kind: gtfs = OTP 그래프 입력 후보, file = 그 밖의 원자료
 # city: gtfs 출처의 역·노선을 적재할 도시 코드(cities.code)
+# db = false면 DB 역·노선 테이블에는 넣지 않고 OTP에만 쓴다(버스: 근사식의 "가까운 역"은 철도 기준)
 # url이 "local:"이면 받지 않고 이 저장소에서 만든다(build-approx). estimated = true면 노선을 "예상"으로 적재한다.
 # kind = "sparql"이면 query 파일(data/pipelines 기준 경로)을 url의 SPARQL 엔드포인트에 보내 JSON으로 받는다.
 
@@ -13,6 +14,17 @@ attribution = "東京都交通局・公共交通オープンデータセンタ�
 refresh = "weekly"
 otp = true
 city = "tokyo"
+
+[[source]]
+id = "toei-bus-gtfs"
+kind = "gtfs"
+url = "https://api-public.odpt.org/api/v4/files/Toei/data/ToeiBus-GTFS.zip"
+license = "CC BY 4.0"
+attribution = "東京都交通局・公共交通オープンデータ協議会 (CC BY 4.0)"
+refresh = "weekly"
+otp = true
+city = "tokyo"
+db = false
 
 [[source]]
 id = "mlit-n02-2025"

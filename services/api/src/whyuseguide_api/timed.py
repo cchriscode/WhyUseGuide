@@ -34,8 +34,7 @@ PLAN = """query($fl:Float!,$fo:Float!,$tl:Float!,$to:Float!,
       legs { mode distance route { agency { name } } } } } }"""
 WALK_ONLY = [{"mode": "WALK"}]
 WALK_TRANSIT = [{"mode": "WALK"}, {"mode": "TRANSIT"}]
-WALKING_BETTER = "WALKING_BETTER_THAN_TRANSIT"  # OTP가 경로 없이 이 오류만 줄 때가 있다
-NO_STOPS = "NO_STOPS_IN_RANGE"  # 출발·도착 근처에 역이 없다(데이터 공백)
+WALKING_BETTER = "WALKING_BETTER_THAN_TRANSIT"  # OTP가 걷는 게 낫다고 명시한 경우(경로 없이 올 때도 있다)
 
 
 def ready_ms(date: str, ready: int) -> int:
@@ -134,8 +133,9 @@ class OtpPlanner:
         균형·알뜰: 경로 km가 도보 기준 이하면 도보, 넘으면 대중교통(도보만 하는 경로는 뺀다).
             OTP가 걷는 게 낫다고 하거나(WALKING_BETTER_THAN_TRANSIT) 대중교통이 모두 걷기보다 늦게
             도착하면 걷는다(예: 19분 기다려 40분 걷고 3분 타는 경로).
-        모든 방식: 대중교통 없이 NO_STOPS_IN_RANGE(근처에 역이 없음)면 None → 엔진 근사("예상").
-            버스 등이 데이터에 없어서 생기는 공백이라, OTP 도보 경로(몇 시간 걷기)를 쓰지 않는다.
+        모든 방식: 대중교통 경로가 하나도 없으면 OTP가 걷는 게 낫다고 할 때만 걷고, 아니면 None → 엔진 근사
+            ("예상"). 근처에 역이 없거나(NO_STOPS_IN_RANGE) 그 시각에 다니는 버스가 없을 때 OTP는 몇 시간
+            걷는 경로를 내는데, 데이터 공백이라 쓰지 않는다.
         균형·빠르게: 가장 일찍 도착.
         알뜰: 운영사 수가 가장 적은 경로(운영사가 바뀌면 운임이 새로 붙는다), 같으면 일찍 도착.
         빠르게: 도보도 후보. 환승이 있고 경로 km가 TAXI_CMP_KM를 넘으면 근사 택시와 비교해 일찍 도착하는 쪽.
@@ -152,7 +152,7 @@ class OtpPlanner:
             return None
         its, errors = res
         transit = [it for it in its if any(leg["route"] for leg in it["legs"])]
-        if not transit and NO_STOPS in errors:
+        if not transit and WALKING_BETTER not in errors:
             return None
         if not its:
             return await self.walk(a, b, date, ready, plan_mode, city) if WALKING_BETTER in errors else None

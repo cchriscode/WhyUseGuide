@@ -64,10 +64,28 @@ def test_balance_takes_earliest_arrival_and_marks_estimated_lines() -> None:
     assert leg.estimated  # 근사 노선(JR)을 탄 경로는 "예상"
 
 
-def test_balance_walks_when_otp_has_no_transit_route() -> None:
-    """도보 기준을 넘어도 OTP가 걷기 경로만 내면 근사(역이 먼 장소는 크게 틀린다) 대신 그 걷기 경로."""
-    leg = ask(planner([itinerary(0, 31, [])]))
+def test_balance_walks_when_otp_says_walking_is_better() -> None:
+    """도보 기준을 넘어도 OTP가 걷는 게 낫다고 하면 근사 대신 OTP 걷기 경로."""
+    body = {
+        "data": {
+            "plan": {
+                "routingErrors": [{"code": "WALKING_BETTER_THAN_TRANSIT"}],
+                "itineraries": [itinerary(0, 31, [])],
+            }
+        }
+    }
+    p = OtpPlanner(
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body))),
+        "http://otp",
+    )
+    leg = ask(p)
     assert leg is not None and (leg.mode, leg.wait_min, leg.minutes, leg.estimated) == ("walk", 0, 31, False)
+
+
+def test_walk_only_without_reason_falls_back() -> None:
+    """정류장은 있는데 그 시각에 버스가 없을 때 등: 이유 없이 걷기 경로만 오면 근사("예상")."""
+    for mode in ("balance", "fast", "cheap"):
+        assert ask(planner([itinerary(0, 140, [])]), b=FAR, mode=mode) is None
 
 
 def test_no_stops_in_range_falls_back_instead_of_hours_of_walking() -> None:
@@ -79,7 +97,8 @@ def test_no_stops_in_range_falls_back_instead_of_hours_of_walking() -> None:
     }
     for mode in ("balance", "fast", "cheap"):
         p = OtpPlanner(
-            httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body))), "x"
+            httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body))),
+            "http://otp",
         )
         assert ask(p, b=FAR, mode=mode) is None
 
