@@ -1,8 +1,12 @@
 from typing import Any
 
+import pytest
 from conftest import auth, needs_db, place_id
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
+
+from itinerary_engine.generate import GenerateInput, GenerateResult, generate
+from whyuseguide_api.routers import ratings
 
 pytestmark = needs_db
 
@@ -178,6 +182,65 @@ def test_fixed_booking_and_validation(client: TestClient, token: str, db: Engine
     assert bad_city.status_code == 422 and bad_city.json()["error"]["code"] == "unknown_city"
     no_taste = client.post("/v1/trips", json={**TRIP, "tastes": []}, headers=auth(token))
     assert no_taste.status_code == 422 and no_taste.json()["error"]["code"] == "invalid_request"
+
+
+def test_suggest_rejects_positions_outside_the_remaining_day(client: TestClient, token: str) -> None:
+    """음수 위치는 파이썬 슬라이스로 엉뚱한 일정이 되고, 범위를 넘으면 500이 났다. 둘 다 422로 막는다."""
+    trip_id = create(client, token)["tripId"]
+    day = client.get(f"/v1/trips/{trip_id}", headers=auth(token)).json()["days"][0]
+    count = len(stops(day))
+    url = f"/v1/trips/{trip_id}/days/0/suggest"
+    for body in (
+        {"mode": "replace", "position": -1},
+        {"mode": "replace", "position": count},
+        {"mode": "between", "position": count + 1},
+        {"mode": "replace"},
+    ):
+        r = client.post(url, json=body, headers=auth(token))
+        assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_position", (body, r.text)
+    assert (
+        client.post(url, json={"mode": "between", "position": count}, headers=auth(token)).status_code == 200
+    )
+    client.post(f"/v1/trips/{trip_id}/days/0/checkin", json={"position": 0}, headers=auth(token))
+    visited = client.post(url, json={"mode": "replace", "position": 0}, headers=auth(token))
+    assert visited.status_code == 422  # 다녀온 곳은 바꿀 수 없다
+
+
+def test_next_day_regeneration_keeps_lodging_and_clears_undo(
+    client: TestClient, token: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """평가 뒤 다음 날을 다시 만들 때도 숙소에서 출발하고, 다시 만들기 전의 되돌리기는 남지 않는다."""
+    lodging = {"lat": 35.7101, "lon": 139.8107}
+    trip_id = create(client, token, lodging=lodging)["tripId"]
+    days = client.get(f"/v1/trips/{trip_id}", headers=auth(token)).json()["days"]
+    assert days[1]["day"]["rows"][0]["from"] == "@start"
+    # 다음 날에 자동 조정 스냅샷을 만든다(되돌리기 가능 상태)
+    patched = client.patch(
+        f"/v1/trips/{trip_id}/days/1",
+        json={"ops": [{"op": "delay", "gap": 1, "minutes": 240}], "clientVersion": days[1]["version"]},
+        headers=auth(token),
+    ).json()
+    assert patched["adjust"]["applied"] and patched["adjust"]["undoAvailable"]
+
+    inputs: list[GenerateInput] = []
+
+    def spy(gen: GenerateInput) -> GenerateResult:
+        inputs.append(gen)
+        return generate(gen)
+
+    monkeypatch.setattr(ratings, "generate", spy)
+    r = client.post(
+        "/v1/course-ratings",
+        json={"tripId": trip_id, "dayIndex": 0, "stars": 4, "tags": ["일정이 빡빡했어요"]},
+        headers=auth(token),
+    )
+    assert r.status_code == 201, r.text
+    assert len(inputs) == 1 and inputs[0].start_point is not None and inputs[0].end_point is not None
+    assert (inputs[0].start_point.lat, inputs[0].start_point.lon) == pytest.approx((35.7101, 139.8107))
+    nxt = r.json()["nextDay"]
+    assert nxt["day"]["rows"][0]["from"] == "@start" and nxt["day"]["rows"][-1]["to"] == "@end"
+    undo = client.post(f"/v1/trips/{trip_id}/days/1/undo", headers=auth(token))
+    assert undo.status_code == 409 and undo.json()["error"]["code"] == "nothing_to_undo"
 
 
 def test_course_rating_updates_prefs_and_next_day(client: TestClient, token: str) -> None:

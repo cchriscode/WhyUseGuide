@@ -12,15 +12,17 @@ import random
 import statistics
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import httpx
 from sqlalchemy import Connection, text
 
-from itinerary_engine.config import constants
 from itinerary_engine.models import City
 from itinerary_engine.route import Endpoint, approx_leg, straight_km
+from whyuseguide_api import network, otp
+
+NUM_ITINERARIES = 3  # 기준 경로로 받는 후보 수. 이 중 가장 짧은 것을 쓴다(회차끼리 비교하려면 바꾸지 않는다).
 
 
 @dataclass(frozen=True)
@@ -43,12 +45,22 @@ class Summary:
 Planner = Callable[[Spot, Spot, str, str], Summary | None]  # (출발, 도착, 날짜, 시각)
 
 # PRD §8 출발 시각: 평일 08:30·13:00·18:00, 주말 11:00
-DEPARTURES = (
-    ("2026-11-17", "08:30"),
-    ("2026-11-17", "13:00"),
-    ("2026-11-17", "18:00"),
-    ("2026-11-21", "11:00"),
-)
+WEEKDAY, WEEKDAY_TIMES = 1, ("08:30", "13:00", "18:00")  # 화요일
+WEEKEND, WEEKEND_TIMES = 5, ("11:00",)  # 토요일
+
+
+def departures(base: date) -> tuple[tuple[str, str], ...]:
+    """기준일 이후 첫 화요일·토요일의 출발 (날짜, 시각).
+
+    날짜를 코드에 박아 두면 새로 받은 데이터의 운행 기간 밖이 되어도 오류 없이 그 노선만 빠진다
+    (2026-11-16 도에이 버스).
+    """
+
+    def first(weekday: int) -> str:
+        return (base + timedelta(days=(weekday - base.weekday()) % 7)).isoformat()
+
+    weekday, weekend = first(WEEKDAY), first(WEEKEND)
+    return tuple((weekday, t) for t in WEEKDAY_TIMES) + tuple((weekend, t) for t in WEEKEND_TIMES)
 
 
 def sample_pairs(
@@ -111,17 +123,11 @@ def metrics(results: Sequence[tuple[Summary | None, Summary | None]]) -> Metrics
 
 
 class OtpPlanner:
-    """OTP GTFS GraphQL plan. banned_agencies: 이 운영사 노선은 쓰지 않는다(쉼표 구분 gtfsId).
+    """OTP 경로(질의문·응답 해석은 whyuseguide_api.otp). 요청이 실패하면 OtpError로 벤치마크를 멈춘다.
 
+    banned_agencies: 이 운영사 노선은 쓰지 않는다(쉼표 구분 gtfsId).
     estimated_agencies: 근사 노선 운영사 이름. 이 노선을 탄 경로는 Summary.estimated = True.
     """
-
-    QUERY = """query($fl:Float!,$fo:Float!,$tl:Float!,$to:Float!,$date:String!,$time:String!,$banned:String) {
-      plan(from:{lat:$fl,lon:$fo}, to:{lat:$tl,lon:$to}, date:$date, time:$time, numItineraries:3,
-           transportModes:[{mode:WALK},{mode:TRANSIT}], banned:{agencies:$banned}) {
-        itineraries { duration numberOfTransfers legs { mode route { gtfsId agency { name } } } }
-      }
-    }"""
 
     def __init__(
         self,
@@ -134,27 +140,19 @@ class OtpPlanner:
         self.estimated_agencies = estimated_agencies
 
     def __call__(self, a: Spot, b: Spot, date: str, time: str) -> Summary | None:
-        variables = {
-            "fl": a.lat,
-            "fo": a.lon,
-            "tl": b.lat,
-            "to": b.lon,
-            "date": date,
-            "time": time,
-            "banned": self.banned,
-        }
-        resp = self.client.post(f"{self.url}/otp/gtfs/v1", json={"query": self.QUERY, "variables": variables})
-        resp.raise_for_status()
-        itineraries = resp.json()["data"]["plan"]["itineraries"]
-        if not itineraries:
+        request = otp.plan_request(
+            (a.lat, a.lon), (b.lat, b.lon), date, time, num=NUM_ITINERARIES, banned_agencies=self.banned
+        )
+        plan = otp.fetch_plan_sync(self.client, self.url, request)
+        if not plan.itineraries:
             return None
-        best = min(itineraries, key=lambda it: it["duration"])
-        routes = [leg["route"] for leg in best["legs"] if leg["route"]]
+        best = min(plan.itineraries, key=lambda it: it["duration"])
+        routes = otp.routes(best)
         return Summary(
             minutes=round(best["duration"] / 60),
             transfers=best["numberOfTransfers"],
             first_route=routes[0]["gtfsId"] if routes else None,
-            estimated=any(r["agency"]["name"] in self.estimated_agencies for r in routes),
+            estimated=bool(otp.agency_names(best) & self.estimated_agencies),
         )
 
 
@@ -180,50 +178,31 @@ def approx_planner(city: City) -> Planner:
 def load_spots(conn: Connection, city_code: str) -> list[Spot]:
     """장소와 노선별 가장 가까운 역까지 km(근사식이 직통·환승과 역까지 걷기를 계산하는 데 쓴다).
 
-    API(bridge.place_stations)와 같은 기준: 역 STATION_KM_MAX 안, km는 소수 셋째 자리.
+    역 거리는 API와 같은 SQL·같은 기준(whyuseguide_api.network)이다.
     """
-    rows = conn.execute(
+    places = conn.execute(
         text(
             """
-            SELECT p.id::text AS id, coalesce(p.name_ko, p.name_local) AS name,
-                   ST_Y(p.location::geometry) AS lat, ST_X(p.location::geometry) AS lon,
-                   sl.line_id::text AS line, min(ST_Distance(s.location, p.location)) AS m
-            FROM places p JOIN cities c ON c.id = p.city_id
-            LEFT JOIN stops s ON ST_DWithin(s.location, p.location, :m)
-            LEFT JOIN stop_lines sl ON sl.stop_id = s.id
-            WHERE c.code = :city
-            GROUP BY p.id, sl.line_id
-            """
-        ),
-        {"city": city_code, "m": constants()["approx"]["stationKmMax"] * 1000},
-    )
-    spots: dict[str, Spot] = {}
-    for r in rows:
-        spot = spots.setdefault(r.id, Spot(r.id, r.name, r.lat, r.lon))
-        if r.line is not None:
-            spot.stations[r.line] = round(r.m / 1000, 3)
-    return list(spots.values())
-
-
-def load_city(conn: Connection, city_code: str) -> City:
-    """환승 가능 노선 쌍 = 서로 300m 안에 역이 있는 노선."""
-    rows = conn.execute(
-        text(
-            """
-            SELECT DISTINCT LEAST(l1.id::text, l2.id::text) AS a, GREATEST(l1.id::text, l2.id::text) AS b
-            FROM stops s1 JOIN stops s2 ON s1.id <> s2.id AND ST_DWithin(s1.location, s2.location, 300)
-            JOIN stop_lines x1 ON x1.stop_id = s1.id JOIN lines l1 ON l1.id = x1.line_id
-            JOIN stop_lines x2 ON x2.stop_id = s2.id JOIN lines l2 ON l2.id = x2.line_id
-            JOIN cities c ON c.id = l1.city_id
-            WHERE c.code = :city AND l1.id <> l2.id
+            SELECT p.id, coalesce(p.name_ko, p.name_local) AS name,
+                   ST_Y(p.location::geometry) AS lat, ST_X(p.location::geometry) AS lon
+            FROM places p JOIN cities c ON c.id = p.city_id WHERE c.code = :city
             """
         ),
         {"city": city_code},
+    ).all()
+    stations = network.stations_by_place(
+        conn.execute(network.PLACE_STATIONS_SQL, network.place_stations_params([p.id for p in places]))
     )
-    fare = conn.execute(
-        text("SELECT fare_table FROM cities WHERE code = :city"), {"city": city_code}
-    ).scalar_one()
-    return City.model_validate({"lineLinks": [(r.a, r.b) for r in rows], **(fare or {})})
+    return [Spot(str(p.id), p.name, p.lat, p.lon, stations.get(p.id, {})) for p in places]
+
+
+def load_city(conn: Connection, city_code: str) -> City:
+    """환승 가능 노선 쌍(API와 같은 SQL·같은 기준, whyuseguide_api.network)과 운임표."""
+    city_id, fare = conn.execute(
+        text("SELECT id, fare_table FROM cities WHERE code = :city"), {"city": city_code}
+    ).one()
+    rows = conn.execute(network.LINE_LINKS_SQL, network.line_links_params(city_id))
+    return City.model_validate({"lineLinks": network.line_links(rows), **(fare or {})})
 
 
 SEGMENTS = (
@@ -241,21 +220,21 @@ def segment(a: Spot, b: Spot, ref: Summary | None) -> str:
 
 
 def run(
-    pairs: Sequence[tuple[Spot, Spot]], ours: Planner, ref: Planner
+    pairs: Sequence[tuple[Spot, Spot]], ours: Planner, ref: Planner, when: Sequence[tuple[str, str]]
 ) -> tuple[Metrics, list[dict[str, Any]], dict[str, Metrics]]:
     results: list[tuple[Summary | None, Summary | None]] = []
     groups: dict[str, list[tuple[Summary | None, Summary | None]]] = {k: [] for k in SEGMENTS}
     detail: list[dict[str, Any]] = []
     for a, b in pairs:
-        for date, time in DEPARTURES:
-            o, r = ours(a, b, date, time), ref(a, b, date, time)
+        for day, time in when:
+            o, r = ours(a, b, day, time), ref(a, b, day, time)
             results.append((o, r))
             groups[segment(a, b, r)].append((o, r))
             detail.append(
                 {
                     "from": a.name,
                     "to": b.name,
-                    "date": date,
+                    "date": day,
                     "time": time,
                     "segment": segment(a, b, r),
                     "ours": asdict(o) if o else None,

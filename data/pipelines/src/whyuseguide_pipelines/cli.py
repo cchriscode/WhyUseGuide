@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime
 import httpx
 from sqlalchemy import create_engine
 
+from whyuseguide_api import otp
 from whyuseguide_api.config import Settings
 from whyuseguide_pipelines import benchmark
 from whyuseguide_pipelines.approx import build_feed, load_lines, station_index
@@ -43,12 +44,7 @@ def cmd_fetch(sources: list[Source]) -> int:
 def cmd_validate(sources: list[Source]) -> int:
     failed = 0
     for s in (s for s in sources if s.kind == "gtfs"):
-        path = RAW_DIR / s.id / s.filename
-        if not path.exists():
-            print(f"{s.id}: not fetched")
-            failed += 1
-            continue
-        r = validate_feed(path, date.today())
+        r = validate_feed(RAW_DIR / s.id / s.filename, date.today())
         status = "ok" if r.ok else "FAIL"
         print(f"{s.id}: {status} routes={r.routes} stops={r.stops} trips={r.trips} until={r.service_end}")
         for msg in r.errors + r.warnings:
@@ -136,8 +132,25 @@ def cmd_load_places(sources: list[Source]) -> int:
     return 0
 
 
-def cmd_benchmark(city: str, pairs: int, seed: int) -> int:
+def out_of_service(sources: list[Source], days: Sequence[date], today: date) -> list[str]:
+    """OTP에 넣는 출처 중 이 날짜들에 운행하지 않는 것. 그런 날짜로 재면 그 노선이 조용히 빠진다."""
+    problems = []
+    for s in (s for s in sources if s.otp):
+        r = validate_feed(RAW_DIR / s.id / s.filename, today)
+        for day in days:
+            if (r.service_start and day < r.service_start) or (r.service_end and day > r.service_end):
+                problems.append(f"{s.id}: {day}에 운행하지 않는다({r.service_start} ~ {r.service_end})")
+    return problems
+
+
+def cmd_benchmark(sources: list[Source], city: str, pairs: int, seed: int, base: date) -> int:
     """경로 정확도 벤치마크(PRD §8). 결과는 data/raw/benchmarks/<시각>.json."""
+    when = benchmark.departures(base)
+    problems = out_of_service(sources, sorted({date.fromisoformat(d) for d, _ in when}), date.today())
+    if problems:
+        raise SystemExit(
+            "벤치마크 날짜가 데이터 운행 기간 밖이다(--date로 기준일 지정):\n  " + "\n  ".join(problems)
+        )
     settings = Settings()
     engine = create_engine(settings.database_url)
     with engine.connect() as conn:
@@ -147,21 +160,19 @@ def cmd_benchmark(city: str, pairs: int, seed: int) -> int:
     sample = benchmark.sample_pairs(spots, pairs, seed)
     approx_operators = sorted({ln.operator for ln in load_lines(APPROX_LINES)})
     with httpx.Client(timeout=60) as client:
-        agencies = client.post(
-            f"{settings.otp_url}/otp/gtfs/v1", json={"query": "{ agencies { gtfsId name } }"}
-        ).json()["data"]["agencies"]
-        banned = ",".join(a["gtfsId"] for a in agencies if a["name"] in approx_operators)
+        agencies = otp.fetch_agencies_sync(client, settings.otp_url)
+        banned = ",".join(gtfs_id for name, gtfs_id in agencies.items() if name in approx_operators)
         estimated = frozenset(approx_operators)
-        otp = benchmark.OtpPlanner(client, settings.otp_url, estimated_agencies=estimated)
+        otp_all = benchmark.OtpPlanner(client, settings.otp_url, estimated_agencies=estimated)
         otp_free_only = benchmark.OtpPlanner(
             client, settings.otp_url, banned_agencies=banned, estimated_agencies=estimated
         )
         reports = []
         for name, ours, ref in (
-            ("otp-vs-approx (우리=엔진 근사식, 기준=OTP)", benchmark.approx_planner(city_model), otp),
-            ("free-data-impact (우리=메트로·도에이만, 기준=근사 노선 포함)", otp_free_only, otp),
+            ("otp-vs-approx (우리=엔진 근사식, 기준=OTP)", benchmark.approx_planner(city_model), otp_all),
+            ("free-data-impact (우리=메트로·도에이만, 기준=근사 노선 포함)", otp_free_only, otp_all),
         ):
-            m, detail, segments = benchmark.run(sample, ours, ref)
+            m, detail, segments = benchmark.run(sample, ours, ref, when)
             reports.append(benchmark.report(name, m, detail, segments))
             print(name)
             for key, value in vars(m).items():
@@ -187,9 +198,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     bench.add_argument("--city", default="tokyo")
     bench.add_argument("--pairs", type=int, default=200)
     bench.add_argument("--seed", type=int, default=20261026)
+    bench.add_argument(
+        "--date",
+        type=date.fromisoformat,
+        default=date.today(),
+        help="기준일(YYYY-MM-DD). 이날 이후 첫 화요일·토요일로 잰다(기본: 오늘)",
+    )
     args = parser.parse_args(argv)
     if args.command == "benchmark":
-        return cmd_benchmark(args.city, args.pairs, args.seed)
+        return cmd_benchmark(load_sources(), args.city, args.pairs, args.seed, args.date)
     sources = _select(load_sources(), args.ids)
     commands = {
         "fetch": cmd_fetch,

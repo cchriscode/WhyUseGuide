@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -26,15 +27,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     ):
         if not hasattr(app.state, "checks"):
             app.state.checks = build_checks(settings, engine, redis, http)
-        app.state.planner = OtpPlanner(otp, settings.otp_url) if settings.otp_timed_legs else None
+        app.state.planner = (
+            OtpPlanner(otp, settings.otp_url, settings.otp_concurrency) if settings.otp_timed_legs else None
+        )
         yield
     await redis.aclose()
     await engine.dispose()
 
 
+def configure_logging(level: str) -> None:
+    """whyuseguide_api 로거를 표준 오류로 낸다(uvicorn은 자기 로거만 설정한다)."""
+    logger = logging.getLogger("whyuseguide_api")
+    logger.setLevel(level)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        logger.addHandler(handler)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="WhyUseGuide API", lifespan=lifespan)
     app.state.settings = settings or Settings()
+    configure_logging(app.state.settings.log_level)
     errors.install(app)
     app.include_router(auth.router)
     app.include_router(catalog.router)

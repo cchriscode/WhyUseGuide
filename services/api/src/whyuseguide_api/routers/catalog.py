@@ -1,28 +1,23 @@
 """도시·장소 조회 (PRD §7: GET /cities, /places, /places/{id}). 공개 정보라 토큰 없이 쓴다."""
 
 import uuid
-from datetime import datetime, time
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Query
 from geoalchemy2.functions import ST_X, ST_Y, ST_Distance, ST_GeogFromText
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
 from sqlalchemy import cast, func, or_, select
 from sqlalchemy.types import Float
 
 from whyuseguide_api.db.models import City, Place, PlaceHours, PlaceStatus, Stop
 from whyuseguide_api.deps import Session
 from whyuseguide_api.errors import ApiError
+from whyuseguide_api.schemas import ApiModel, hhmm
 
 router = APIRouter(prefix="/v1", tags=["catalog"])
 
 
-class Out(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
-class CityOut(Out):
+class CityOut(ApiModel):
     code: str
     name_ko: str
     timezone: str
@@ -32,7 +27,7 @@ class CityOut(Out):
     kind: str
 
 
-class PlaceSummary(Out):
+class PlaceSummary(ApiModel):
     id: str
     name_ko: str | None
     name_local: str
@@ -44,14 +39,14 @@ class PlaceSummary(Out):
     distance_m: int | None = None
 
 
-class HoursOut(Out):
+class HoursOut(ApiModel):
     weekday: int  # 0 = 월요일
     open: str
     close: str
     last_entry: str | None
 
 
-class StopOut(Out):
+class StopOut(ApiModel):
     id: str
     name_ko: str | None
     name_local: str
@@ -70,10 +65,6 @@ class PlaceDetail(PlaceSummary):
     verified_at: datetime | None
     hours: list[HoursOut]
     nearest_stop: StopOut | None
-
-
-def _hhmm(t: time) -> str:
-    return t.strftime("%H:%M")
 
 
 @router.get("/cities", response_model=list[CityOut], response_model_by_alias=True)
@@ -189,9 +180,9 @@ async def place_detail(session: Session, place_id: uuid.UUID) -> PlaceDetail:
         hours=[
             HoursOut(
                 weekday=h.weekday,
-                open=_hhmm(h.open_time),
-                close=_hhmm(h.close_time),
-                last_entry=_hhmm(h.last_entry_time) if h.last_entry_time else None,
+                open=hhmm(h.open_time),
+                close=hhmm(h.close_time),
+                last_entry=hhmm(h.last_entry_time) if h.last_entry_time else None,
             )
             for h in hours
         ],

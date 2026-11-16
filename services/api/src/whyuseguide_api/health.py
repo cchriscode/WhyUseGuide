@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable
 
 import httpx
@@ -7,6 +8,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from whyuseguide_api.config import Settings
+
+log = logging.getLogger(__name__)
 
 # 각 검사는 성공하면 사람이 읽을 상세 문자열을 돌려주고, 실패하면 예외를 던진다.
 Check = Callable[[], Awaitable[str]]
@@ -39,7 +42,10 @@ async def run_checks(checks: dict[str, Check], timeout_s: float) -> dict[str, di
         except TimeoutError:
             return {"ok": False, "detail": f"timeout after {timeout_s}s"}
         except Exception as exc:  # 검사 대상마다 예외 종류가 달라 모두 실패로 기록한다.
-            return {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}
+            # /health는 인증 없이 열려 있다. 예외 문구에는 내부 주소·계정·SQL이 들어갈 수 있어
+            # 응답에는 예외 종류만 싣고 문구는 로그에 남긴다.
+            log.warning("health 검사 실패: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "detail": type(exc).__name__}
         return {"ok": True, "detail": detail}
 
     results = await asyncio.gather(*(one(c) for c in checks.values()))

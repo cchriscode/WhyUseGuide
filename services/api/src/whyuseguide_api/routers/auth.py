@@ -1,18 +1,15 @@
 from datetime import datetime
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
 
 from whyuseguide_api.db.models import User
 from whyuseguide_api.deps import Session, issue_token
+from whyuseguide_api.schemas import ApiModel
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
 
-class TokenOut(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
+class TokenOut(ApiModel):
     token: str
     expires_at: datetime
     user_id: str

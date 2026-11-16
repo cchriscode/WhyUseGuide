@@ -1,12 +1,13 @@
 import hashlib
 import json
 import zipfile
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import httpx
 import pytest
 
+from whyuseguide_pipelines import cli
 from whyuseguide_pipelines.fetch import fetch, provenance_path
 from whyuseguide_pipelines.gtfs import validate_feed
 from whyuseguide_pipelines.sources import Source, load_sources
@@ -53,6 +54,31 @@ def test_valid_feed(tmp_path: Path) -> None:
     assert (report.routes, report.stops, report.trips) == (1, 2, 1)
     assert report.service_end == date(2027, 3, 12)
     assert report.warnings == []
+
+
+def test_service_period_and_unreadable_feeds(tmp_path: Path) -> None:
+    """운행 시작일도 읽는다. 없는 파일·깨진 zip은 예외가 아니라 오류로 보고한다."""
+    report = validate_feed(make_feed(tmp_path, GOOD_FEED), today=date(2026, 10, 26))
+    assert report.service_start is not None and report.service_start <= date(2026, 10, 26)
+    assert validate_feed(tmp_path / "nope.zip", today=date(2026, 10, 26)).errors == ["not fetched"]
+    broken = tmp_path / "broken.zip"
+    broken.write_bytes(b"not a zip")
+    assert validate_feed(broken, today=date(2026, 10, 26)).errors == ["not a zip file"]
+
+
+def test_out_of_service_reports_feeds_that_do_not_run_on_the_date(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """벤치마크 날짜가 운행 기간 밖이면 그 노선이 조용히 빠진다(2026-11-16 도에이 버스). 미리 막는다."""
+    src = Source("feed", "gtfs", "https://x/feed.zip", "CC0", "x", "weekly", otp=True, city="tokyo")
+    (tmp_path / "feed").mkdir()
+    make_feed(tmp_path / "feed", GOOD_FEED)
+    monkeypatch.setattr(cli, "RAW_DIR", tmp_path)
+    start = validate_feed(tmp_path / "feed" / "feed.zip", date(2026, 10, 26)).service_start
+    assert start is not None
+    assert cli.out_of_service([src], [start], date(2026, 10, 26)) == []
+    problems = cli.out_of_service([src], [start - timedelta(days=1), date(2030, 1, 1)], date(2026, 10, 26))
+    assert len(problems) == 2 and all(p.startswith("feed: ") for p in problems)
 
 
 def test_missing_required_file(tmp_path: Path) -> None:

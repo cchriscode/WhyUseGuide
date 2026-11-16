@@ -14,6 +14,7 @@ class FeedReport:
     routes: int = 0
     stops: int = 0
     trips: int = 0
+    service_start: date | None = None
     service_end: date | None = None
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -32,30 +33,51 @@ def _yyyymmdd(value: str) -> date:
     return date(int(value[:4]), int(value[4:6]), int(value[6:8]))
 
 
-def _service_end(zf: zipfile.ZipFile, names: set[str]) -> date | None:
+def _service_period(zf: zipfile.ZipFile, names: set[str]) -> tuple[date | None, date | None]:
+    """(운행 시작일, 종료일). feed_info와 calendar 중 가장 넓은 범위."""
+    starts: list[date] = []
     ends: list[date] = []
-    if "feed_info.txt" in names:
-        ends += [_yyyymmdd(r["feed_end_date"]) for r in _rows(zf, "feed_info.txt") if r.get("feed_end_date")]
-    if "calendar.txt" in names:
-        ends += [_yyyymmdd(r["end_date"]) for r in _rows(zf, "calendar.txt") if r.get("end_date")]
-    return max(ends) if ends else None
+    for name, start_key, end_key in (
+        ("feed_info.txt", "feed_start_date", "feed_end_date"),
+        ("calendar.txt", "start_date", "end_date"),
+    ):
+        if name in names:
+            rows = _rows(zf, name)
+            starts += [_yyyymmdd(r[start_key]) for r in rows if r.get(start_key)]
+            ends += [_yyyymmdd(r[end_key]) for r in rows if r.get(end_key)]
+    return (min(starts) if starts else None, max(ends) if ends else None)
 
 
-def validate_feed(path: Path, today: date, warn_within_days: int = 30) -> FeedReport:
-    """OTP에 넣기 전 최소 점검: 필수 파일, 행 수, 서비스 종료일."""
-    report = FeedReport(path=path)
+def _read_feed(path: Path, report: FeedReport) -> None:
     with zipfile.ZipFile(path) as zf:
         names = set(zf.namelist())
         missing = [n for n in REQUIRED_FILES if n not in names]
         if missing:
             report.errors.append(f"missing files: {', '.join(missing)}")
-            return report
+            return
         if "calendar.txt" not in names and "calendar_dates.txt" not in names:
             report.errors.append("missing files: calendar.txt or calendar_dates.txt")
         report.routes = len(_rows(zf, "routes.txt"))
         report.stops = len(_rows(zf, "stops.txt"))
         report.trips = len(_rows(zf, "trips.txt"))
-        report.service_end = _service_end(zf, names)
+        report.service_start, report.service_end = _service_period(zf, names)
+
+
+def validate_feed(path: Path, today: date, warn_within_days: int = 30) -> FeedReport:
+    """OTP에 넣기 전 최소 점검: 필수 파일, 행 수, 서비스 기간.
+
+    파일이 없거나 zip이 깨졌으면 예외 대신 오류로 보고한다(한 출처 때문에 전체 실행이 멈추지 않게).
+    """
+    report = FeedReport(path=path)
+    if not path.exists():
+        report.errors.append("not fetched")
+        return report
+    try:
+        _read_feed(path, report)
+    except zipfile.BadZipFile:
+        report.errors.append("not a zip file")
+    if report.errors:
+        return report
     for label, count in (("routes", report.routes), ("stops", report.stops), ("trips", report.trips)):
         if count == 0:
             report.errors.append(f"{label}.txt has no rows")

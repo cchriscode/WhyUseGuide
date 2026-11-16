@@ -12,19 +12,27 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from whyuseguide_api.db.models import AuthToken, User
 from whyuseguide_api.errors import ApiError
+from whyuseguide_api.timed import OtpPlanner
 
 TOKEN_TTL = timedelta(days=30)  # PRD §10 보안: 토큰 만료 30일
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
-    """DB 세션. OTP 질의 객체도 실어 둔다(timed.planner_for로 꺼낸다)."""
     maker: async_sessionmaker[AsyncSession] = request.app.state.sessionmaker
     async with maker() as session:
-        session.info["planner"] = getattr(request.app.state, "planner", None)
         yield session
 
 
 Session = Annotated[AsyncSession, Depends(get_session)]
+
+
+def get_planner(request: Request) -> OtpPlanner | None:
+    """OTP 시간표 구간 질의 객체(main.lifespan이 만든다). None이면 엔진 근사만 쓴다."""
+    planner: OtpPlanner | None = request.app.state.planner
+    return planner
+
+
+Planner = Annotated[OtpPlanner | None, Depends(get_planner)]
 
 
 def hash_token(token: str) -> str:

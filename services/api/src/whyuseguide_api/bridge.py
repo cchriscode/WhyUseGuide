@@ -11,15 +11,11 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from itinerary_engine.config import constants
 from itinerary_engine.generate import Profile
 from itinerary_engine.models import City as EngineCity
 from itinerary_engine.models import Place as EnginePlace
+from whyuseguide_api import network
 from whyuseguide_api.db.models import City, Place, PlaceClosure, PlaceHours, PlaceStatus, PlaceTag
-
-# 이 거리 안 역의 노선을 장소에서 탈 수 있는 노선으로 본다(근사 경로 §5.3 STATION_KM_MAX)
-NEAR_STOP_M = round(constants()["approx"]["stationKmMax"] * 1000)
-TRANSFER_M = 300  # 서로 이 거리 안에 역이 있으면 두 노선은 환승할 수 있다고 본다
 
 
 def hhmm(t: time | None) -> str | None:
@@ -27,22 +23,11 @@ def hhmm(t: time | None) -> str | None:
 
 
 async def city_network(session: AsyncSession, city_id: uuid.UUID) -> EngineCity:
-    rows = await session.execute(
-        text(
-            """
-            SELECT DISTINCT LEAST(x1.line_id::text, x2.line_id::text) AS a,
-                            GREATEST(x1.line_id::text, x2.line_id::text) AS b
-            FROM stops s1 JOIN stops s2 ON s1.id <> s2.id AND ST_DWithin(s1.location, s2.location, :m)
-            JOIN stop_lines x1 ON x1.stop_id = s1.id JOIN stop_lines x2 ON x2.stop_id = s2.id
-            WHERE s1.city_id = :city AND x1.line_id <> x2.line_id
-            """
-        ),
-        {"city": city_id, "m": TRANSFER_M},
-    )
+    rows = await session.execute(network.LINE_LINKS_SQL, network.line_links_params(city_id))
     fare: dict[str, Any] = (
         await session.execute(select(City.fare_table).where(City.id == city_id))
     ).scalar_one() or {}
-    return EngineCity.model_validate({"lineLinks": [(r.a, r.b) for r in rows], **fare})
+    return EngineCity.model_validate({"lineLinks": network.line_links(rows), **fare})
 
 
 async def place_stations(
@@ -51,21 +36,8 @@ async def place_stations(
     """장소별 {노선 id: 그 노선의 가장 가까운 역까지 km}. 역이 없는 장소는 빠진다(엔진은 빈 값 = 역이 멂)."""
     if not place_ids:
         return {}
-    rows = await session.execute(
-        text(
-            """
-            SELECT p.id AS pid, sl.line_id::text AS line, min(ST_Distance(s.location, p.location)) AS m
-            FROM places p JOIN stops s ON ST_DWithin(s.location, p.location, :m)
-            JOIN stop_lines sl ON sl.stop_id = s.id
-            WHERE p.id = ANY(:ids) GROUP BY p.id, sl.line_id
-            """
-        ),
-        {"ids": place_ids, "m": NEAR_STOP_M},
-    )
-    out: dict[uuid.UUID, dict[str, float]] = defaultdict(dict)
-    for r in rows:
-        out[r.pid][r.line] = round(r.m / 1000, 3)
-    return out
+    rows = await session.execute(network.PLACE_STATIONS_SQL, network.place_stations_params(place_ids))
+    return network.stations_by_place(rows)
 
 
 async def engine_places(

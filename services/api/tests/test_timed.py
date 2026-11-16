@@ -1,16 +1,20 @@
 """시간표 구간(열차에 맞춘 출발 시각). OTP는 가짜 HTTP 응답·가짜 시간표로 대신한다(DB 불필요)."""
 
 import json
+import logging
+from collections.abc import Callable
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import anyio
 import httpx
+import pytest
 
 from itinerary_engine.compute import compute
 from itinerary_engine.config import to_hhmm, to_min
 from itinerary_engine.models import City, Day, Leg, LegRow, PlanMode, StopRow
 from itinerary_engine.route import Endpoint
-from whyuseguide_api.timed import OtpPlanner, ready_ms, timed_compute, to_leg
+from whyuseguide_api.timed import CityTransit, OtpPlanner, ready_ms, timed_compute, to_leg
 
 DATE = "2026-10-27"
 A = Endpoint("A", 35.7148, 139.7967)  # 센소지
@@ -18,11 +22,12 @@ B = Endpoint("B", 35.7188, 139.7765)  # 도쿄 국립박물관(경로 약 2.4km 
 FAR = Endpoint("F", 35.6812, 139.7671)  # 도쿄역(경로 약 6km)
 NEAR = Endpoint("N", 35.7119, 139.7963)  # 나카미세(약 300m → 도보)
 TOEI, JR = "東京都交通局", "東日本旅客鉄道"
+TOKYO = CityTransit(tz=ZoneInfo("Asia/Tokyo"), estimated_agencies=frozenset({JR}))
 
 
 def itinerary(start: float, end: float, agencies: list[str], transfers: int = 0) -> dict[str, Any]:
     """ready(10:00) 기준 분으로 만든 OTP 경로."""
-    base = ready_ms(DATE, 600)
+    base = ready_ms(DATE, 600, TOKYO.tz)
     legs: list[dict[str, Any]] = [{"mode": "WALK", "distance": 400.0, "route": None}]
     legs += [{"mode": "SUBWAY", "distance": 2000.0, "route": {"agency": {"name": a}}} for a in agencies]
     return {
@@ -33,26 +38,35 @@ def itinerary(start: float, end: float, agencies: list[str], transfers: int = 0)
     }
 
 
+def otp_planner(handle: Callable[[httpx.Request], httpx.Response]) -> OtpPlanner:
+    """가짜 HTTP 응답으로 도는 OtpPlanner."""
+    return OtpPlanner(httpx.AsyncClient(transport=httpx.MockTransport(handle)), "http://otp", concurrency=2)
+
+
+def plan_body(its: list[dict[str, Any]], *errors: str) -> dict[str, Any]:
+    return {"data": {"plan": {"routingErrors": [{"code": e} for e in errors], "itineraries": its}}}
+
+
 def planner(
-    its: list[dict[str, Any]], seen: list[dict[str, Any]] | None = None, status: int = 200
+    its: list[dict[str, Any]], *errors: str, seen: list[dict[str, Any]] | None = None, status: int = 200
 ) -> OtpPlanner:
     def handle(request: httpx.Request) -> httpx.Response:
         if seen is not None:
             seen.append(json.loads(request.content)["variables"])
-        return httpx.Response(status, json={"data": {"plan": {"itineraries": its}}})
+        return httpx.Response(status, json=plan_body(its, *errors))
 
-    return OtpPlanner(httpx.AsyncClient(transport=httpx.MockTransport(handle)), "http://otp")
+    return otp_planner(handle)
 
 
 def ask(p: OtpPlanner, b: Endpoint = B, mode: PlanMode = "balance") -> Leg | None:
     async def go() -> Leg | None:
-        return await p.leg(A, b, DATE, 600, mode, City(), frozenset({JR}))
+        return await p.leg(A, b, DATE, 600, mode, City(), TOKYO)
 
     return anyio.run(go)
 
 
 def test_to_leg_waits_down_and_arrives_up() -> None:
-    leg = to_leg(itinerary(7.5, 25.2, [TOEI]), A, B, "balance", 600, ready_ms(DATE, 600), City(), frozenset())
+    leg = to_leg(itinerary(7.5, 25.2, [TOEI]), A, B, "balance", 600, ready_ms(DATE, 600, TOKYO.tz), City())
     assert (leg.depart_at, leg.wait_min, leg.minutes) == ("10:00", 7, 19)  # 10:07 출발, 10:26 도착
     assert leg.mode == "transit" and not leg.estimated and leg.km == 2.4
 
@@ -66,19 +80,7 @@ def test_balance_takes_earliest_arrival_and_marks_estimated_lines() -> None:
 
 def test_balance_walks_when_otp_says_walking_is_better() -> None:
     """도보 기준을 넘어도 OTP가 걷는 게 낫다고 하면 근사 대신 OTP 걷기 경로."""
-    body = {
-        "data": {
-            "plan": {
-                "routingErrors": [{"code": "WALKING_BETTER_THAN_TRANSIT"}],
-                "itineraries": [itinerary(0, 31, [])],
-            }
-        }
-    }
-    p = OtpPlanner(
-        httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body))),
-        "http://otp",
-    )
-    leg = ask(p)
+    leg = ask(planner([itinerary(0, 31, [])], "WALKING_BETTER_THAN_TRANSIT"))
     assert leg is not None and (leg.mode, leg.wait_min, leg.minutes, leg.estimated) == ("walk", 0, 31, False)
 
 
@@ -90,17 +92,10 @@ def test_walk_only_without_reason_falls_back() -> None:
 
 def test_no_stops_in_range_falls_back_instead_of_hours_of_walking() -> None:
     """실데이터: 근처에 역이 없으면 OTP가 215분 걷기 경로를 낸다. 데이터 공백이라 근사("예상")로 둔다."""
-    body = {
-        "data": {
-            "plan": {"routingErrors": [{"code": "NO_STOPS_IN_RANGE"}], "itineraries": [itinerary(0, 215, [])]}
-        }
-    }
+    seen: list[dict[str, Any]] = []
     for mode in ("balance", "fast", "cheap"):
-        p = OtpPlanner(
-            httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body))),
-            "http://otp",
-        )
-        assert ask(p, b=FAR, mode=mode) is None
+        assert ask(planner([itinerary(0, 215, [])], "NO_STOPS_IN_RANGE", seen=seen), b=FAR, mode=mode) is None
+    assert len(seen) == 3  # 요청은 실제로 나갔다(요청 실패로 None이 된 게 아니다)
 
 
 def test_balance_walks_when_every_transit_option_arrives_later() -> None:
@@ -120,10 +115,9 @@ def test_fast_may_walk_and_cheap_prefers_fewer_operators() -> None:
 
 def test_short_leg_asks_walk_only_and_failure_falls_back() -> None:
     seen: list[dict[str, Any]] = []
-    leg = ask(planner([itinerary(0, 6, [])], seen), b=NEAR)
+    leg = ask(planner([itinerary(0, 6, [])], seen=seen), b=NEAR)
     assert leg is not None and (leg.mode, leg.wait_min, leg.minutes) == ("walk", 0, 6)
     assert seen[0]["modes"] == [{"mode": "WALK"}] and seen[0]["time"] == "10:00"
-    assert ask(planner([], status=500)) is None
     assert ask(planner([])) is None
 
 
@@ -142,7 +136,7 @@ class EveryTenMinutes(OtpPlanner):
         ready: int,
         plan_mode: PlanMode,
         city: City,
-        estimated_agencies: frozenset[str],
+        transit: CityTransit,
     ) -> Leg | None:
         self.calls.append((a.id, b.id, ready))
         if b.id in self.fail:
@@ -183,7 +177,7 @@ def three_stops() -> Day:
 
 def test_timed_compute_settles_on_train_times() -> None:
     p = EveryTenMinutes()
-    result = anyio.run(timed_compute, three_stops(), p)
+    result = anyio.run(timed_compute, three_stops(), p, TOKYO)
     legs = [r for r in result.rows if isinstance(r, LegRow)]
     stops = [r for r in result.rows if isinstance(r, StopRow)]
     # P 09:00~10:02 → 준비 10:02, 10:10 열차를 타려면 10:07 출발(5분 더 머묾) → 10:25 도착
@@ -197,7 +191,7 @@ def test_timed_compute_settles_on_train_times() -> None:
 
 
 def test_failed_leg_is_estimated_and_later_legs_still_timed() -> None:
-    result = anyio.run(timed_compute, three_stops(), EveryTenMinutes(fail=frozenset({"Q"})))
+    result = anyio.run(timed_compute, three_stops(), EveryTenMinutes(fail=frozenset({"Q"})), TOKYO)
     legs = [r for r in result.rows if isinstance(r, LegRow)]
     assert legs[0].estimated and legs[0].wait_min == 0  # P→Q는 OTP 실패 → 근사
     assert not legs[1].estimated and int(legs[1].depart[-1]) == 7  # Q→R은 열차 시각(…7분 출발)
@@ -218,7 +212,7 @@ class FixedMinutes(OtpPlanner):
         ready: int,
         plan_mode: PlanMode,
         city: City,
-        estimated_agencies: frozenset[str],
+        transit: CityTransit,
     ) -> Leg | None:
         self.calls.append((a.id, b.id, ready))
         m = self.minutes[(a.id, b.id)]
@@ -257,7 +251,7 @@ def test_result_is_kept_when_ready_time_comes_back() -> None:
     )
     approx = [r.minutes for r in compute(day).rows if isinstance(r, LegRow)]
     p = FixedMinutes({("P", "Q"): approx[0] + 10, ("Q", "R"): approx[1] - 10, ("R", "S"): 7})
-    result = anyio.run(timed_compute, day, p)
+    result = anyio.run(timed_compute, day, p, TOKYO)
     legs = [r for r in result.rows if isinstance(r, LegRow)]
     assert [leg.estimated for leg in legs] == [False, False, False]
     rs = [c[2] for c in p.calls if c[:2] == ("R", "S")]
@@ -266,13 +260,35 @@ def test_result_is_kept_when_ready_time_comes_back() -> None:
 
 def test_walking_better_than_transit_asks_for_the_walk() -> None:
     answers = [
-        {"data": {"plan": {"routingErrors": [{"code": "WALKING_BETTER_THAN_TRANSIT"}], "itineraries": []}}},
-        {"data": {"plan": {"routingErrors": [], "itineraries": [itinerary(0, 29, [])]}}},
+        plan_body([], "WALKING_BETTER_THAN_TRANSIT"),
+        plan_body([itinerary(0, 29, [])]),
     ]
-
-    def handle(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=answers.pop(0))
-
-    p = OtpPlanner(httpx.AsyncClient(transport=httpx.MockTransport(handle)), "http://otp")
-    leg = ask(p, b=FAR)
+    leg = ask(otp_planner(lambda request: httpx.Response(200, json=answers.pop(0))), b=FAR)
     assert leg is not None and (leg.mode, leg.minutes) == ("walk", 29) and not answers
+
+
+@pytest.mark.parametrize(
+    ("response", "reason"),
+    [
+        (httpx.Response(500, json={}), "HTTP 500"),
+        (httpx.Response(200, json={"errors": [{"message": "Validation error"}]}), "GraphQL 오류"),
+        (httpx.Response(200, text="not json"), "응답을 해석할 수 없다"),
+        (httpx.Response(200, json={"data": {"plan": None}}), "응답을 해석할 수 없다"),
+    ],
+)
+def test_otp_failure_is_logged_and_falls_back(
+    response: httpx.Response, reason: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """OTP 실패는 근사로 넘어가되(None), 조용히 넘어가지 않는다."""
+    with caplog.at_level(logging.WARNING, logger="whyuseguide_api.timed"):
+        assert ask(otp_planner(lambda request: response)) is None
+    assert "OTP 질의 실패" in caplog.text and reason in caplog.text
+
+
+def test_otp_connection_error_is_logged_and_falls_back(caplog: pytest.LogCaptureFixture) -> None:
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused")
+
+    with caplog.at_level(logging.WARNING, logger="whyuseguide_api.timed"):
+        assert ask(otp_planner(refuse)) is None
+    assert "ConnectError" in caplog.text

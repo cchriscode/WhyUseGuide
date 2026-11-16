@@ -1,4 +1,20 @@
-from whyuseguide_pipelines.benchmark import SEGMENTS, Spot, Summary, metrics, sample_pairs, segment
+import json
+from datetime import date
+
+import httpx
+import pytest
+
+from whyuseguide_api.otp import OtpError
+from whyuseguide_pipelines.benchmark import (
+    SEGMENTS,
+    OtpPlanner,
+    Spot,
+    Summary,
+    departures,
+    metrics,
+    sample_pairs,
+    segment,
+)
 
 
 def test_metrics() -> None:
@@ -43,3 +59,49 @@ def test_segment_separates_real_timetables_from_estimates() -> None:
     assert segment(near_a, near_b, Summary(30, 0, "r1")) == SEGMENTS[0]
     assert segment(near_a, near_b, Summary(30, 0, "jr", estimated=True)) == SEGMENTS[1]
     assert segment(near_a, far, Summary(30, 0, "r1")) == SEGMENTS[2]
+
+
+def test_departures_follow_the_base_date() -> None:
+    """기준일 이후 첫 화요일(08:30·13:00·18:00)과 첫 토요일(11:00). 기준일이 그 요일이면 그날."""
+    assert departures(date(2026, 11, 16)) == (  # 월요일
+        ("2026-11-17", "08:30"),
+        ("2026-11-17", "13:00"),
+        ("2026-11-17", "18:00"),
+        ("2026-11-21", "11:00"),
+    )
+    assert {d for d, _ in departures(date(2026, 11, 17))} == {"2026-11-17", "2026-11-21"}
+    assert {d for d, _ in departures(date(2026, 11, 18))} == {"2026-11-24", "2026-11-21"}
+
+
+def test_otp_planner_summarizes_the_shortest_itinerary() -> None:
+    def itinerary(minutes: int, agencies: list[str]) -> dict[str, object]:
+        legs: list[dict[str, object]] = [{"mode": "WALK", "distance": 300.0, "route": None}]
+        legs += [
+            {"mode": "RAIL", "distance": 2000.0, "route": {"gtfsId": f"1:{a}", "agency": {"name": a}}}
+            for a in agencies
+        ]
+        return {"duration": minutes * 60, "numberOfTransfers": max(0, len(agencies) - 1), "legs": legs}
+
+    seen: list[dict[str, object]] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content)["variables"])
+        its = [itinerary(40, ["metro"]), itinerary(31, ["metro", "jr"])]
+        return httpx.Response(200, json={"data": {"plan": {"routingErrors": [], "itineraries": its}}})
+
+    a, b = Spot("a", "A", 35.70, 139.70), Spot("b", "B", 35.72, 139.76)
+    with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+        planner = OtpPlanner(
+            client, "http://otp", banned_agencies="1:x", estimated_agencies=frozenset({"jr"})
+        )
+        assert planner(a, b, "2026-11-17", "08:30") == Summary(31, 1, "1:metro", estimated=True)
+    assert seen[0]["banned"] == "1:x" and seen[0]["date"] == "2026-11-17" and seen[0]["n"] == 3
+
+
+def test_otp_planner_stops_the_benchmark_on_failure() -> None:
+    """기준 경로를 못 받으면 조용히 빼지 않고 멈춘다(빠진 채로 집계하면 결과가 달라진다)."""
+    with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(500))) as client:
+        with pytest.raises(OtpError, match="HTTP 500"):
+            OtpPlanner(client, "http://otp")(
+                Spot("a", "A", 35.7, 139.7), Spot("b", "B", 35.72, 139.76), "d", "t"
+            )

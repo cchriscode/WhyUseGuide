@@ -29,6 +29,7 @@
     "transfer2": [27, 1.8],
     "stationKmMax": 0.8,
     "stationKmUnknown": 0.35,
+    "transferKmMax": 0.3,
     "taxi": [8, 2.4],
     "car": { "base": 8, "cityPerKm": 2.4, "cityKm": 20, "highwayPerKm": 0.9 }
   },
