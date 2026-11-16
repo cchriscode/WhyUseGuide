@@ -1,0 +1,190 @@
+{
+ "name": "suggest-between",
+ "kind": "suggest",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "A"
+    },
+    {
+     "placeId": "B",
+     "fixedAt": "11:00"
+    }
+   ],
+   "places": {
+    "A": {
+     "id": "A",
+     "name": "A",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60
+    },
+    "B": {
+     "id": "B",
+     "name": "B",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60
+    }
+   },
+   "legs": [
+    {
+     "from": "A",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "A",
+     "to": "X",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 5,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "X",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 5,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "A",
+     "to": "Y",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 20,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "Y",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 20,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "A",
+     "to": "Z",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 5,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "Z",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 5,
+     "fare": 180,
+     "km": 3.0
+    }
+   ]
+  },
+  "mode": "between",
+  "position": 1,
+  "cur": -1,
+  "candidates": [
+   {
+    "id": "Y",
+    "name": "Y",
+    "type": "박물관",
+    "lat": 35.68,
+    "lon": 139.7,
+    "defaultStayMin": 60,
+    "rating": 4.5
+   },
+   {
+    "id": "Z",
+    "name": "Z",
+    "type": "박물관",
+    "lat": 35.68,
+    "lon": 139.7,
+    "defaultStayMin": 60,
+    "rating": 3.0,
+    "closed": true
+   },
+   {
+    "id": "X",
+    "name": "X",
+    "type": "박물관",
+    "lat": 35.68,
+    "lon": 139.7,
+    "defaultStayMin": 30,
+    "rating": 4.0
+   }
+  ]
+ },
+ "expected": [
+  {
+   "placeId": "X",
+   "name": "X",
+   "position": 1,
+   "score": -44.0,
+   "detourMin": 0,
+   "arrive": "10:05",
+   "endAfter": "12:00",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "가는 길"
+   ],
+   "effect": "이동 그대로 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
+   "placeId": "Z",
+   "name": "Z",
+   "position": 1,
+   "score": 62.0,
+   "detourMin": 0,
+   "arrive": "10:05",
+   "endAfter": "12:10",
+   "absorbed": false,
+   "sameType": false,
+   "outsideHours": true,
+   "newIssues": 0,
+   "badges": [
+    "가는 길"
+   ],
+   "effect": "이동 그대로 · 끝나는 시간 10분 늦어져요",
+   "warning": "영업시간 밖이에요"
+  },
+  {
+   "placeId": "Y",
+   "name": "Y",
+   "position": 1,
+   "score": 63.0,
+   "detourMin": 30,
+   "arrive": "10:20",
+   "endAfter": "12:40",
+   "absorbed": false,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 1,
+   "badges": [],
+   "effect": "30분 돌아가요 · 끝나는 시간 40분 늦어져요",
+   "warning": "다른 일정 1곳이 맞지 않게 돼요"
+  }
+ ]
+}

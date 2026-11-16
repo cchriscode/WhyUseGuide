@@ -1,0 +1,279 @@
+{
+ "name": "random-08-suggest",
+ "kind": "suggest",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "10:00",
+   "items": [
+    {
+     "placeId": "8-0"
+    },
+    {
+     "placeId": "8-1"
+    },
+    {
+     "placeId": "8-2",
+     "fixedAt": "17:00"
+    },
+    {
+     "placeId": "8-3"
+    }
+   ],
+   "places": {
+    "8-0": {
+     "id": "8-0",
+     "name": "장소8-0",
+     "type": "전망",
+     "lat": 35.66242,
+     "lon": 139.77814,
+     "defaultStayMin": 75,
+     "rating": 3.8,
+     "costPerPerson": 2000,
+     "indoor": false,
+     "stations": {}
+    },
+    "8-1": {
+     "id": "8-1",
+     "name": "장소8-1",
+     "type": "시장",
+     "lat": 35.70483,
+     "lon": 139.72376,
+     "defaultStayMin": 45,
+     "rating": 4.6,
+     "costPerPerson": 500,
+     "indoor": false,
+     "stations": {},
+     "open": "11:00",
+     "close": "22:00"
+    },
+    "8-2": {
+     "id": "8-2",
+     "name": "장소8-2",
+     "type": "맛집",
+     "lat": 35.65835,
+     "lon": 139.73246,
+     "defaultStayMin": 30,
+     "rating": 3.9,
+     "costPerPerson": 0,
+     "indoor": true,
+     "stations": {
+      "H": 0.16,
+      "M": 0.337
+     },
+     "open": "10:00",
+     "close": "20:00"
+    },
+    "8-3": {
+     "id": "8-3",
+     "name": "장소8-3",
+     "type": "공원",
+     "lat": 35.67053,
+     "lon": 139.76169,
+     "defaultStayMin": 45,
+     "rating": 3.5,
+     "costPerPerson": 0,
+     "indoor": false,
+     "stations": {},
+     "open": "11:00",
+     "close": "22:00"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "fast"
+  },
+  "mode": "between",
+  "cur": -1,
+  "position": 4,
+  "candidates": [
+   {
+    "id": "8-c0",
+    "name": "장소8-c0",
+    "type": "전망",
+    "lat": 35.67557,
+    "lon": 139.68939,
+    "defaultStayMin": 60,
+    "rating": 3.8,
+    "costPerPerson": 1000,
+    "indoor": false,
+    "stations": {
+     "M": 0.628
+    },
+    "open": "09:30",
+    "close": "16:30"
+   },
+   {
+    "id": "8-c1",
+    "name": "장소8-c1",
+    "type": "공원",
+    "lat": 35.72026,
+    "lon": 139.78237,
+    "defaultStayMin": 45,
+    "rating": 4.7,
+    "costPerPerson": 0,
+    "indoor": false,
+    "stations": {
+     "M": 0.707
+    },
+    "closed": true
+   },
+   {
+    "id": "8-c2",
+    "name": "장소8-c2",
+    "type": "전망",
+    "lat": 35.65123,
+    "lon": 139.73142,
+    "defaultStayMin": 120,
+    "rating": 3.1,
+    "costPerPerson": 0,
+    "indoor": false,
+    "stations": {},
+    "open": "09:30",
+    "close": "16:30"
+   },
+   {
+    "id": "8-c3",
+    "name": "장소8-c3",
+    "type": "전망",
+    "lat": 35.71543,
+    "lon": 139.72801,
+    "defaultStayMin": 60,
+    "rating": 4.5,
+    "costPerPerson": 500,
+    "indoor": true,
+    "stations": {},
+    "open": "09:30",
+    "close": "16:30"
+   },
+   {
+    "id": "8-c4",
+    "name": "장소8-c4",
+    "type": "시장",
+    "lat": 35.67087,
+    "lon": 139.701,
+    "defaultStayMin": 90,
+    "rating": 4.4,
+    "costPerPerson": 0,
+    "indoor": false,
+    "stations": {},
+    "open": "10:00",
+    "close": "20:00"
+   },
+   {
+    "id": "8-c5",
+    "name": "장소8-c5",
+    "type": "시장",
+    "lat": 35.66414,
+    "lon": 139.70877,
+    "defaultStayMin": 45,
+    "rating": 3.7,
+    "costPerPerson": 500,
+    "indoor": false,
+    "stations": {},
+    "open": "11:00",
+    "close": "22:00"
+   }
+  ]
+ },
+ "expected": [
+  {
+   "placeId": "8-c5",
+   "name": "장소8-c5",
+   "position": 4,
+   "score": 1.8,
+   "detourMin": 24,
+   "arrive": "19:35",
+   "endAfter": "20:20",
+   "absorbed": false,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [],
+   "effect": "24분 돌아가요 · 끝나는 시간 70분 늦어져요",
+   "warning": null
+  },
+  {
+   "placeId": "8-c1",
+   "name": "장소8-c1",
+   "position": 4,
+   "score": 78.8,
+   "detourMin": 27,
+   "arrive": "19:40",
+   "endAfter": "20:25",
+   "absorbed": false,
+   "sameType": false,
+   "outsideHours": true,
+   "newIssues": 0,
+   "badges": [],
+   "effect": "27분 돌아가요 · 끝나는 시간 75분 늦어져요",
+   "warning": "영업시간 밖이에요"
+  },
+  {
+   "placeId": "8-c4",
+   "name": "장소8-c4",
+   "position": 4,
+   "score": 79.6,
+   "detourMin": 26,
+   "arrive": "19:40",
+   "endAfter": "21:10",
+   "absorbed": false,
+   "sameType": false,
+   "outsideHours": true,
+   "newIssues": 0,
+   "badges": [],
+   "effect": "26분 돌아가요 · 끝나는 시간 120분 늦어져요",
+   "warning": "영업시간 밖이에요"
+  }
+ ]
+}

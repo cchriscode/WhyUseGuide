@@ -31,6 +31,7 @@ Oct 24, 2026 · @Jin
 - 커뮤니티 피드, 친구·팔로우
 - 구독 결제
 - LLM이 일정 수치(시간·요금·순서)를 직접 생성하는 방식
+- 크루즈, 장거리 트레킹·자전거 여행, 출장 일정, 패키지 투어 (여행 형태는 13.4의 네 가지만)
 
 **확정된 핵심 결정**
 
@@ -38,10 +39,12 @@ Oct 24, 2026 · @Jin
 | --- | --- |
 | 화면 방향 | C1 "한 화면 한 행동" 구조 + 길 안내의 접고 펴는 지도 + 전체 화면 지도 |
 | 출시 도시 | 1차 도쿄, 2차 오사카 |
+| 대상 사용자 | 한국인 해외여행자 먼저, 이후 전 세계 여행자 (현지인 대상 아님) |
+| 교통·장소 데이터 | 무료이면서 상업 이용 가능한 데이터만 (8장, `docs/data-licenses.md`). 유료 데이터는 벤치마크·평가로 필요가 확인된 뒤 검토 |
 | 앱 | Expo(React Native) + TypeScript, iOS·Android 동시 |
 | 서버 | Python 3.12 + FastAPI, PostgreSQL 16 + PostGIS, Redis |
 | 경로 계산 | OpenTripPlanner 2 자체 운영 (GTFS + OpenStreetMap) |
-| 지도 표시 | MapLibre + OpenStreetMap 기반 벡터 타일 |
+| 지도 표시 | MapLibre + OpenStreetMap 기반 벡터 타일, Protomaps(PMTiles) 자체 호스팅 |
 | 일정 엔진 | 규칙·점수 기반 결정적 알고리즘 (5장), LLM 미사용 |
 | LLM 사용 범위 | 장소 태그·설명문 일괄 생성(배치)만. 런타임 일정 계산에는 쓰지 않음 |
 | 언어 | 한국어 UI, 현지어(일본어) 문장 카드 |
@@ -69,6 +72,10 @@ MVP는 도쿄 한 도시에서 "설정 → 일정 생성 → 현지 실행 → �
 | 크리에이터 코스 따라가기 |  | O (기능 플래그) |  |
 | 오프라인 사용 | 일정·문장 캐시 | 지도 타일 다운로드 |  |
 | 오사카 |  | O |  |
+| 여행 형태: 한 도시 · 한 지역만 (13.4) | O |  |  |
+| 숙소 위치 반영 | O (P1) |  |  |
+| 당일치기 (거점에서 근교 하루) |  | O |  |
+| 여행 형태: 자동차 여행 (13.4) |  |  | O |
 
 **기술 스택 (확정)**
 
@@ -76,13 +83,13 @@ MVP는 도쿄 한 도시에서 "설정 → 일정 생성 → 현지 실행 → �
 | --- | --- | --- |
 | 앱 | Expo SDK 최신 안정판, React Native, TypeScript, Expo Router | iOS·Android 단일 코드 |
 | 상태 관리 | Zustand + TanStack Query | 서버 상태와 화면 상태 분리 |
-| 지도 | @maplibre/maplibre-react-native, OSM 기반 벡터 타일 | 타일 공급처는 MapTiler 등 상용 또는 자체 호스팅 중 택1 (미결 12장) |
+| 지도 | @maplibre/maplibre-react-native, OSM 기반 벡터 타일 | 타일은 Protomaps로 OSM을 PMTiles 파일 하나로 빌드해 객체 저장소 + CDN에 자체 호스팅. 상용 타일 API 미사용 (8장) |
 | 서버 | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 |  |
 | DB | PostgreSQL 16 + PostGIS, Redis (캐시·잡 큐) |  |
 | 경로 엔진 | OpenTripPlanner 2 (도쿄 GTFS + OSM 그래프) | 도보·대중교통 모두 OTP로 계산 |
 | 일정 엔진 | 서버 Python 모듈 `itinerary_engine` + 같은 로직의 TypeScript 포트(앱 오프라인용) | 결정적·순수 함수, 단위 테스트 필수 |
 | 배치 작업 | Python 스크립트 + cron (GTFS 갱신, 장소 수집, 태깅) |  |
-| 인프라 | Docker Compose (로컬), 단일 클라우드 리전 도쿄 | OTP는 메모리 8GB 이상 |
+| 인프라 | Docker Compose (로컬), 단일 클라우드 리전 한국 | OTP는 메모리 8GB 이상. 도쿄 사용자와의 지연은 P3에서 측정 |
 | 분석 | 자체 이벤트 테이블 + 추후 외부 도구 | 10장 이벤트 목록 |
 | 테스트 | pytest, Jest, Maestro(앱 E2E) |  |
 
@@ -140,17 +147,17 @@ MVP는 도쿄 한 도시에서 "설정 → 일정 생성 → 현지 실행 → �
 ### S-01 여행 설정 (4단계)
 
 - 상단: 뒤로 버튼, "n / 4", 진행 막대 4칸. 본문 위에 큰 질문 한 줄 + 보조 문구.
-- 1단계 어디로: 도시 카드 2×2 (MVP는 도쿄만 선택 가능, 나머지는 "곧 열려요" 비활성). 일수 스테퍼 1\~9일, 날짜 범위 표시. 출발일은 달력 시트로 선택.
+- 1단계 어디로: 맨 위 여행 형태 분할 버튼(한 도시 / 한 지역만 / 여러 도시 / 자동차 여행, 13.4). MVP는 한 도시·한 지역만 선택 가능, 나머지는 "곧 열려요" 비활성. 한 지역만을 고르면 도시 카드 아래 동네 칩(areas, 다중 선택)이 나온다. 그 아래 도시 카드 2×2 (MVP는 도쿄만 선택 가능, 나머지는 "곧 열려요" 비활성). 일수 스테퍼 1\~9일, 날짜 범위 표시. 출발일은 달력 시트로 선택.
 - 2단계 누구와: 성인(최소 1)·아동 스테퍼, 동행 유형 칩(혼자/친구/연인/가족) 단일 선택.
 - 3단계 취향: 8개 타일 다중 선택(맛집, 역사·문화, 골목 산책, 야경·전망, 쇼핑, 카페, 자연·공원, 사진 명소). 0개면 다음 버튼 비활성 + "하나 이상 골라주세요".
-- 4단계 스타일: 하루 템포(여유 3\~4곳 / 보통 5\~6곳 / 알차게 7곳+), 1인 하루 예산(알뜰/보통/여유), 유명↔로컬 슬라이더(0\~100, 10단위), 선택 입력 "꼭 갈 곳·이미 한 예약"(장소 검색 + 예약 시각).
+- 4단계 스타일: 하루 템포(여유 3\~4곳 / 보통 5\~6곳 / 알차게 7곳+), 1인 하루 예산(알뜰/보통/여유), 유명↔로컬 슬라이더(0\~100, 10단위), 선택 입력 "꼭 갈 곳·이미 한 예약"(장소 검색 + 예약 시각), 선택 입력 "숙소 위치"(주소·장소 검색, 넣으면 하루 시작·끝이 숙소가 된다).
 - 하단: 요약 한 줄("도쿄 · 3일 · 성인 2 · 취향 3개") + 주 버튼 "다음" / 마지막 단계 "일정 만들기".
 
 인수 조건
 
 - [ ] 각 단계 값이 뒤로 갔다 와도 유지된다
 - [ ] "일정 만들기" 후 5초 안에 S-02가 뜬다 (서버 생성 p95 3초)
-- [ ] 예약을 입력한 장소는 그 시각에 고정된 채 일정에 들어간다
+- [ ] 예약을 입력한 장소는 그 시각에 고정된 채 일정에 들어간다 (예약 시각보다 일찍 도착해 시간이 비어도 문제로 보지 않는다. 20분 이상 비면 가는 길에 들를 곳을 추천만 한다)
 
 ### S-02 일정 생성 결과
 
@@ -289,6 +296,11 @@ P0는 MVP 출시에 반드시 필요, P1은 MVP에 넣되 일정이 밀리면 �
 | F-28 | 크리에이터 코스 | P2 | S-10 | 인증 코스 목록·상세·맞춤 변환, 기능 플래그 |
 | F-29 | 링크로 코스 불러오기 | P2 | S-10 | 공개 메타데이터에서 장소 후보 추출 → 사용자 확인 |
 | F-30 | 로그인 | P0 | - | 이메일 매직링크 + Apple·Google 로그인. 로그인 전에도 일정 생성 가능(기기 임시 계정) |
+| F-31 | 여행 형태 선택 | P0 | S-01 | 한 도시/한 지역만/여러 도시/자동차 여행 프리셋 → 거점·이동 수단·지역 값 채움 (13.4) |
+| F-32 | 지역 한정 | P1 | S-01 | 고른 동네(areas) 안 장소만 후보로 일정 생성 (13.4) |
+| F-33 | 숙소 거점 | P1 | S-01, S-03 | 숙소를 하루 시작·끝 지점으로, 숙소↔장소 이동 포함 계산 (5.1) |
+| F-34 | 당일치기 | P2 | S-03 | 거점에서 근교 지역 하루, 편도 DAY\_TRIP\_MAX 이하 지역만 (13.4) |
+| F-35 | 자동차 여행 | P2 (3단계) | S-01\~S-06 | 운전 상한·휴식·숙소 거점 이동, 외부 내비 연결 (13.4) |
 
 ## 5. 일정 엔진 알고리즘
 
@@ -306,32 +318,53 @@ P0는 MVP 출시에 반드시 필요, P1은 MVP에 넣되 일정이 밀리면 �
 | WALK\_ONLY\_KM | 1.4 | 이 거리 이하는 도보 (경로 거리 기준) |
 | WALK\_CHEAP\_KM | 2.6 | 알뜰 모드 도보 허용 거리 |
 | TAXI\_CMP\_KM | 6 | 빠르게 모드에서 환승 구간 택시 비교 시작 거리 |
+| STATION\_KM\_MAX | 0.8 | 장소에서 이 직선 거리 안의 역을 "탈 수 있는 역"으로 본다 (근사 경로 5.3). 안에 역이 없으면 역까지 거리를 이 값으로 본다 |
+| TRANSFER\_KM\_MAX | 0.3 | 서로 이 직선 거리 안에 역이 있는 두 노선은 환승할 수 있다고 본다 (근사 경로 5.3) |
+| STATION\_KM\_UNKNOWN | 0.35 | 역 정보가 없는 지점(숙소 등)의 역까지 거리. 도쿄 장소 후보의 가장 가까운 역 거리 중앙값 |
 | TRIM\_STEP | 15분 | 체류 단축 단위 |
 | TRIM\_FLOOR | max(30분, 원래 체류의 50%) | 체류 단축 하한 |
 | PERMUTE\_MAX | 6 | 순서 전수 탐색 최대 장소 수 (넘으면 2-opt) |
+| MOVE\_CAP | 여유 60분 / 보통 90분 / 알차게 120분 | 대중교통 여행의 하루 관광 이동 상한 (템포별). 실제 상한 = MOVE\_CAP × 도시 계수 `cities.move_cap_factor` × 평가 보정 (5.6). 거점 간 이동일·당일치기 왕복은 제외 (13.4) |
+| DRIVE\_CAP | 여유 180분 / 보통 270분 / 알차게 360분 | 자동차 여행의 하루 운전 합 상한 (숙소 간 이동 포함). 실제 상한 = DRIVE\_CAP × 평가 보정 |
+| WALK\_MAX\_MIN | 60분 | 걷기만 하는 구간의 상한. OTP가 이보다 긴 걷기 경로를 내면(역·정류장이 닿지 않는 곳) 쓰지 않고 근사한다 (5.3) |
+| DRIVE\_BREAK\_EVERY | 120분 | 연속 운전이 이만큼 쌓이면 휴식 삽입 |
+| DRIVE\_BREAK\_MIN | 15분 | 휴식 시간 |
+| DRIVE\_RESET\_STAY\_MIN | 15분 | 이만큼 이상 머무는 장소에 들르면 연속 운전 시간을 0으로 되돌린다 |
+| PARK\_MIN | 10분 | 자동차 구간마다 주차·걸어가기 가산 |
+| DAY\_TRIP\_MAX | 120분 | 당일치기 지역까지 거점에서 편도 최대 이동 시간 |
+| MOVE\_CAP\_SWAP\_MAX | 3 | 이동 상한 초과 시 하루에 교체 시도할 최대 장소 수 |
+| MOVE\_CAP\_SCORE\_MIN | 0.8 | 교체 후보의 후보 점수(5.2-1) 하한, 원래 장소 점수 대비 비율 |
 
 ### 5.1 일정 계산 `compute(day)`
 
-입력: 장소 순서, 장소별 체류(기본값 또는 사용자 변경), 출발 시각, 이동 방식, 지연(구간 인덱스·분).
+입력: 장소 순서, 장소별 체류(기본값 또는 사용자 변경), 출발 시각, 이동 방식, 이동 수단(transit/car), 하루 시작·끝 지점(숙소, 없으면 첫 장소에서 시작하고 마지막 장소에서 끝), 지연(구간 인덱스·분).
+
+0. 시작 지점이 있으면 시작 지점 → 첫 장소를 구간 0으로 앞에 붙인다.
 
 1. t = 출발 시각. 각 장소 i에 대해:
-2. i > 0이면 구간(i−1 → i) 경로를 고른다(5.3). t += 이동 시간 + 해당 구간 지연. 총 이동·교통비 누적.
+2. i > 0이면 구간(i−1 → i) 경로를 고른다(5.3). 출발 준비 시각 = t + 해당 구간 지연. 시간표 구간(OTP)은 그 준비 시각에 구한 결과만 쓰고, 첫 열차까지 기다리는 시간은 출발지에서 더 머무는 시간(wait\_min)으로 둔다. 출발 시각 = 준비 시각 + wait\_min. t = 출발 시각 + 이동 시간. 총 이동(더 머무는 시간 제외)·교통비 누적.
 3. t를 SLOT\_MIN 단위로 올림 → 도착 시각 arrive.
 4. 고정 예약이 있으면: t < 예약 시각이면 대기 = 예약 − t, 시작 = 예약 시각. t > 예약 + FIXED\_LATE\_TOL이면 문제 `late`.
 5. 예약이 없으면: t < 오픈 시각이면 대기 = 오픈 − t, 시작 = 오픈 시각. 대기 > OPEN\_WAIT\_MAX면 문제 `open`.
 6. 문제가 없고 시작 + 체류 > 마감 시각이면 문제 `close`.
 7. 끝 = 시작 + 체류. t = 끝.
+8. 자동차 구간: 이동 시간에 PARK\_MIN을 더한다. 연속 운전(체류 DRIVE\_RESET\_STAY\_MIN 이상인 장소에 들르면 0으로 초기화)이 DRIVE\_BREAK\_EVERY를 넘는 구간에는 DRIVE\_BREAK\_MIN 휴식을 넣고 구간 행에 "휴게소에서 15분 쉬어 가요"를 붙인다.
+9. 끝 지점이 있으면 마지막 장소 → 끝 지점 구간을 더한다. 대중교통 여행은 이 구간을 총 이동에만 넣고 종료 시각은 마지막 장소의 끝, 자동차 여행은 종료 시각 = 숙소 도착.
 
-출력: 행 목록(장소 행: arrive, wait, start, end, issue / 구간 행: 경로, 지연), 총 이동, 교통비, 입장료·식비 합, 종료 시각, 문제 수.
+출력: 행 목록(장소 행: arrive, wait, start, end, issue / 구간 행: 경로, 지연, 휴식, 출발 시각 depart, 더 머무는 분 waitMin), 총 이동(자동차는 운전 합), 교통비(자동차는 유류비 + 주차비, 통행료 별도), 입장료·식비 합, 종료 시각, 문제 수.
 
 ### 5.2 일정 생성 `generate(trip)`
 
-1. **후보 점수:** 장소마다 score = 0.5 × 취향 일치도(사용자 취향 벡터와 장소 태그 벡터의 코사인) + 0.3 × 평점 정규화 + 0.2 × 유명도 적합도(슬라이더 값과 장소 유명도 등급 1\~5의 거리). 예약 입력 장소는 무조건 포함.
+1. **후보 점수:** 장소마다 score = 0.5 × 취향 일치도(사용자 취향 벡터와 장소 태그 벡터의 코사인) + 0.3 × 평점 정규화 + 0.2 × 유명도 적합도(슬라이더 값과 장소 유명도 등급 1\~5의 거리). 예약 입력 장소는 무조건 포함. 후보는 거점 지역 안 장소만 쓴다(지역 한정이면 고른 동네 안, 당일치기 날이면 그 지역 안, 13.4).
 2. **하루 장소 수:** 여유 4, 보통 6, 알차게 7 (식사 장소 포함).
-3. **날짜별 묶기:** 상위 후보를 위치 기준 k-평균(k = 일수)으로 묶고, 묶음마다 상위 N곳 선택. 휴무일인 장소는 그 날 묶음에서 제외.
-4. **식사 배치:** 맛집·시장 유형 1곳을 12:00±60분, 저녁 유형 1곳을 18:30±60분 시간창에 둔다.
+3. **날짜별 묶기:** 상위 후보를 위치 기준 k-평균(k = 일수)으로 묶고, 묶음마다 상위 N곳 선택. 휴무일인 장소는 그 날 묶음에서 제외. 자동차 여행은 13.4 거시 계획이 날짜를 나누므로 이 단계를 건너뛴다.
+4. **식사 배치:** 점심 유형(맛집·시장) 1곳을 12:00±60분, 저녁 유형(맛집·바 골목·시장) 1곳을 18:30±60분 시간창에 둔다. 장소 유형 목록과 식사 유형은 `constants.json`의 `placeTypes`·`mealTypes`에 둔다.
 5. **순서:** 시간창이 있는 외판원 문제(OR-Tools 라우팅, 시간창 = 영업시간·예약·식사 창). 이동 시간 행렬은 OTP로 구한다. 해가 없으면 평점 낮은 장소부터 하나씩 빼고 다시 푼다.
-6. **3안:** 같은 순서 결정 과정을 이동 방식 빠르게/균형/알뜰로 각각 돌려 3안을 만든다.
+6. **이동 상한 맞추기:** 하루 이동 합이 상한을 넘으면 가까운 곳으로 교체한다. 대중교통 여행은 균형 모드 관광 이동 합과 MOVE\_CAP × 도시 계수 × 평가 보정을, 자동차 여행은 운전 합과 DRIVE\_CAP × 평가 보정을 비교한다 (13.4).
+   - 교체 대상: 예약 장소를 뺀 장소 중, 빼면 이동 시간이 가장 많이 줄어드는 곳. 식사 장소는 같은 식사 유형 후보로만 바꾼다.
+   - 교체 후보: 그날 묶음의 미선택 장소 중 후보 점수가 원래 장소의 MOVE\_CAP\_SCORE\_MIN 배 이상이고, 그 자리에 넣었을 때 이동 시간이 가장 짧은 곳. 넣은 뒤 5단계 순서를 다시 푼다.
+   - 상한 안에 들어오거나 MOVE\_CAP\_SWAP\_MAX번 교체하면 멈춘다. 그래도 넘으면 장소를 빼지 않고 그대로 두되, S-02 카드와 S-03 보조 줄에 "이동이 긴 날이에요 · N분"을 표시한다.
+7. **3안:** 6단계까지 정한 장소로 순서 결정 과정을 이동 방식 빠르게/균형/알뜰로 각각 돌려 3안을 만든다. 이동 상한은 6단계에서 한 번만 맞추므로 3안의 장소는 같다. 자동차 여행은 3안 대신 1안만 만든다.
 
 ### 5.3 구간 경로 선택
 
@@ -343,7 +376,25 @@ P0는 MVP 출시에 반드시 필요, P1은 MVP에 넣되 일정이 밀리면 �
 | 빠르게 | 대중교통 최단, 환승 구간이 TAXI\_CMP\_KM 넘으면 택시와 비교해 빠른 쪽 | 위와 같음 + 택시 시간 = 8 + 2.4 × km |
 | 알뜰 | 거리 ≤ WALK\_CHEAP\_KM면 도보, 아니면 운임 최소 | 위와 같음 |
 
-근사 시간: 도보 = 경로 km × 1000 / 75 (분), 직통 = 9 + 1.9 × km, 환승 1회 = 14 + 2.0 × km. 경로 km = 직선 거리 × 1.3. 근사 운임은 도시별 운임표 구간값을 쓴다.
+근사 시간: 도보 = 경로 km × 1000 / 75 (분). 대중교통 = 역까지 걷기 + 기본 + 1.8 × km, 기본은 직통 9 / 환승 1회 20 / 환승 2회 27분. 역까지 걷기 = (출발·도착 장소에서 탈 역까지 직선 km 합) × 1.3 × 1000 / 75. 경로 km = 직선 거리 × 1.3. 근사 운임은 도시별 운임표 구간값을 쓴다.
+
+- 탈 역 고르기: 장소마다 STATION\_KM\_MAX 안의 역을 노선별로 가장 가까운 것 하나씩 둔다. 같은 노선이 있으면 직통, 두 노선이 만나는 환승역이 있으면 환승 1회, 없으면 환승 2회. 직통·환승 1회는 양끝 역까지 거리 합이 가장 작은 노선(쌍)을, 환승 2회는 양쪽 각자 가장 가까운 역을 쓴다.
+**열차에 맞춘 출발 시각 (서버, 2026-11-16):** API는 화면에 보여 줄 일정(생성 3안, 조회·변경 결과, 처음 코스 비교)을 OTP 시간표 구간으로 계산한다.
+
+- 구간마다 출발 준비 시각(앞 장소 체류 끝 + 지연)에 OTP에 묻고, 가장 일찍 도착하는 경로를 고른다. 첫 열차까지 기다리는 시간은 출발지에서 더 머무는 시간으로 두고, 구간 행에 "출발 hh:mm"을 붙인다. 출발은 분 내림, 도착은 분 올림.
+- 앞 구간이 바뀌면 뒤 구간의 준비 시각이 바뀌므로, 준비 시각이 달라진 구간만 다시 묻기를 반복한다. 결과는 (출발, 도착, 준비 시각)마다 기억한다.
+- 균형·알뜰은 위 표의 도보 기준을 그대로 쓴다. 기준을 넘어도 OTP가 걷는 게 낫다고 하거나(`WALKING_BETTER_THAN_TRANSIT`) 대중교통이 모두 걷기보다 늦게 도착하면 걷는다. 알뜰은 운영사 수가 가장 적은 경로(운영사가 바뀌면 운임이 새로 붙는다), 같으면 일찍 도착하는 경로. 빠르게의 택시 비교는 근사 택시 시간을 쓴다.
+- 대중교통 경로가 하나도 없고 OTP가 걷는 게 낫다고도 하지 않거나(근처에 정류장이 없는 `NO_STOPS_IN_RANGE`, 그 시각에 다니는 버스가 없음 등 데이터 공백), OTP가 실패하면 그 구간만 근사한다("예상"). OTP 도보 경로(몇 시간 걷기)를 쓰지 않는다.
+- 근사 노선(JR 등)을 탄 OTP 경로는 `estimated: true`. 자동차 여행은 아직 근사만 쓴다.
+- 걷기만 하는 OTP 경로가 WALK\_MAX\_MIN을 넘으면 쓰지 않고 그 구간을 근사한다(역·정류장이 닿지 않는 곳에서 OTP는 "걷는 게 낫다"며 몇 시간짜리 걷기를 낸다).
+- 요금: OTP가 운영사 GTFS의 운임표(fare\_attributes·fare\_rules, IC 카드 요금)로 구간마다 계산한 값을 합친다. 한 번 내는 요금이 여러 구간에 걸치면 한 번만 센다. 운임표가 없는 운영사(근사 노선 JR 등)의 구간만 그 구간 거리의 도시 구간 운임으로 채운다.
+- 앱 오프라인 재계산은 근사식이라 열차에 맞추지 못한다(더 머무는 시간 0, "예상").
+
+**근사 운임 (`cities.fare_table`):** 엔진의 운임 모델과 같은 모양이다 — `fareBands`(경로 km 구간별 대중교통 성인 운임), `taxi`(기본 운임 `base`, 기본 거리 `baseKm`, 이후 km당 `perKm`), `fuelPerKm`(자동차 유류비). 모르는 키는 오류로 본다. 값은 `data/pipelines/city_fares.toml`에 출처와 함께 적고 `wug-data load-fares`로 넣는다. 도쿄는 도쿄메트로 IC 운임(6km까지 178엔 ~ 40km까지 324엔, 운영사 GTFS 운임표와 같은 기준)과 2026-04-20 시행 택시 운임(1km까지 500엔, 이후 232m마다 100엔)을 쓴다. 운영사를 갈아타는 경로의 실제 운임은 더 나온다(근사). 운임이 없는 도시는 대중교통 요금이 0으로 나오고 택시를 후보에서 빼며, API가 경고를 남긴다.
+
+- 계수 근거(2026-11-16): OTP 결과 1,134건(장소 쌍 600 × 출발 2회)의 절반으로 맞추고 나머지 절반으로 검증했다. 양쪽 다 역 800m 안인 장소에서 중앙 오차 4.2분, 5분 이내 57%, 10분 이내 88% (이전 식은 14.7분, 5%, 22%). 정밀 노선만 탄 경로(실제 시간표)는 중앙 오차 3.7분. 역이 먼 장소(버스·택시 구간)는 근거 데이터가 없어 보정하지 않았다. 8장 벤치마크로 다시 잰다.
+
+**자동차 구간 (이동 수단 car):** 이동 방식 구분 없이 OTP 자동차 모드(OSM 도로망)로 질의한다(3단계 전에 Valhalla 등 자동차 전용 오픈소스 엔진과 비교해 확정, 12장). 근사 시간 = 8 + 2.4 × min(km, 20) + 0.9 × max(km − 20, 0) (분). 교통 상황을 반영하지 않으므로 OTP 결과도 항상 `estimated: true`("예상"). 유류비 = 경로 km × `cities.fare_table.fuelPerKm`, 주차비 = `places.parking_fee`, 통행료는 계산하지 않고 "통행료 별도"로 표시한다.
 
 ### 5.4 자동 조정 `autoAdjust(day, cur)`
 
@@ -371,17 +422,20 @@ P0는 MVP 출시에 반드시 필요, P1은 MVP에 넣되 일정이 밀리면 �
 
 ### 5.6 평가 반영 규칙 (MVP)
 
-| 입력 | 다음 날 재생성에 반영 |
+| 입력 (태그 코드) | 다음 날 재생성에 반영 |
 | --- | --- |
-| 이동이 길었어요 | 하루 이동 상한 −20% (기본 1시간 30분 → 1시간 10분) |
-| 일정이 빡빡했어요 | 하루 장소 수 −1, 장소 사이 여유 10분 추가 |
-| 여유로웠어요 | 하루 장소 수 +1 허용 |
-| 로컬 스팟 좋았어요 | 유명↔로컬 슬라이더 +15 |
-| 사람이 너무 많았어요 | 유명도 1\~2 장소는 오전 시간창 우선, 슬라이더 +10 |
-| 대기 줄이 길었어요 | 예약 가능 장소는 예약 버튼 먼저 노출 |
+| 이동이 길었어요 (`long_moves`) | 하루 이동 상한 −20% (평가 보정 × 0.8, MOVE\_CAP·DRIVE\_CAP 모두. 예: 보통 90분 → 72분) |
+| 일정이 빡빡했어요 (`too_tight`) | 하루 장소 수 −1, 장소 사이 여유 10분 추가 |
+| 여유로웠어요 (`relaxed`) | 하루 장소 수 +1 허용 |
+| 로컬 스팟 좋았어요 (`local_good`) | 유명↔로컬 슬라이더 +15 |
+| 사람이 너무 많았어요 (`crowded`) | 유명한 곳(유명도 4\~5)은 오전 시간창(12:00 전) 우선, 슬라이더 +10 |
+| 대기 줄이 길었어요 (`long_queue`) | 예약 가능 장소는 예약 버튼 먼저 노출 |
+| 동선이 효율적 (`efficient_route`), 시간 안내 정확 (`accurate_times`) | 저장만 한다(반영 규칙 없음) |
 | 장소 좋아요 / 별로 | 그 장소 태그 가중치 +0.1 / −0.1 |
-| 별점 ≤ 2 | 다음 날은 오늘과 다른 유형 비중 상향 |
+| 별점 ≤ 2 | 다음 날은 오늘과 다른 유형 비중 상향 (오늘 간 유형의 후보 점수 −0.1) |
 | 정확도 "달랐어요" | 그날 구간을 검증 큐에 등록 (운영 확인) |
+
+유명도는 1(로컬) ~ 5(유명)다. 위 표의 수치(× 0.8, −1, 10분, +1, +15, +10, ±0.1, 별점 ≤ 2, 유명도 4 이상, 12:00, −0.1)는 `constants.json`의 `feedback`에 두고, 미리보기 문구의 숫자도 그 값에서 만든다.
 
 별점 ≥ 4이고 익명 공유에 동의한 코스는 (취향 유형 × 도시 × 코스) 단위로 집계해 2단계 추천 랭킹(F-26)에 쓴다.
 
@@ -393,28 +447,32 @@ PostgreSQL + PostGIS. 모든 테이블에 `id`(UUID), `created_at`, `updated_at`
 
 | 테이블 | 주요 컬럼 | 메모 |
 | --- | --- | --- |
-| cities | code(tokyo), name\_ko, timezone, currency, fare\_table(jsonb), launched(bool) |  |
-| places | city\_id, name\_ko, name\_local, type(enum), indoor(bool), popularity(1\~5), rating(numeric), review\_count, default\_stay\_min, cost\_per\_person, currency, location, nearest\_stop\_id, bookable(bool), affiliate\_url, tip\_ko, status(active/closed/hidden), verified\_at | type: 신사·사찰, 박물관, 시장, 골목 상점가, 전망, 바 골목, 체험, 정원, 야경, 맛집, 공원, 카페 거리, 서점, 쇼핑 |
+| cities | code(tokyo), name\_ko, timezone, currency, fare\_table(jsonb), launched(bool), move\_cap\_factor(numeric, 기본 1.0) | move\_cap\_factor: 도시 이동 특성 보정 (아래) |
+| places | city\_id, name\_ko, name\_local, name\_en, type(enum), indoor(bool), popularity(1 로컬 \~ 5 유명), rating(numeric), review\_count, default\_stay\_min, cost\_per\_person, currency, location, nearest\_stop\_id, bookable(bool), affiliate\_url, tip\_ko, parking\_fee(nullable), website, status(active/closed/hidden), verified\_at, source, source\_ref | type: 신사·사찰, 박물관, 시장, 골목 상점가, 전망, 바 골목, 체험, 정원, 야경, 맛집, 공원, 카페 거리, 서점, 쇼핑, 휴게소, 숙박 거점(자동차 여행 숙소 위치 후보, 13.4) |
+| areas | city\_id, name\_ko, boundary(geography(Polygon)) | 지역 한정용 동네 (편집팀 정의, 도쿄 MVP 8\~10곳) |
 | place\_hours | place\_id, weekday(0\~6), open\_time, close\_time, last\_entry\_time | 휴무일은 행 없음, 특별 휴무는 place\_closures |
 | place\_closures | place\_id, date, reason |  |
 | place\_tags | place\_id, tag, weight(0\~1), source(llm/editor/user) | 취향 매칭용 |
-| stops | city\_id, gtfs\_stop\_id, name\_ko, name\_local, location, parent\_station\_id | GTFS에서 적재 |
+| stops | city\_id, source\_id, gtfs\_stop\_id, code, name\_ko, name\_ko\_source, name\_ko\_aliases, name\_local, name\_en, location, parent\_station\_id | GTFS에서 적재. source\_id = `data/pipelines/sources.toml`의 출처 id, code = 역 번호(A-18 등). name\_ko는 GTFS에 없어 로마자 → 한글 기계 변환(국립국어원 일본어 표기법) 또는 편집 목록으로 채움. name\_ko\_source = official/editor/machine. name\_ko\_aliases = 검색 별칭(관용 표기: つ = 츠, 첫머리 거센소리) |
 | stop\_lines | stop\_id, line\_id |  |
-| lines | city\_id, gtfs\_route\_id, name\_ko, name\_local, color\_hex, operator | 노선 색은 GTFS route\_color |
+| lines | city\_id, source\_id, gtfs\_route\_id, name\_ko, name\_ko\_source, name\_ko\_aliases, name\_local, name\_en, color\_hex, operator, estimated | 노선 색은 GTFS route\_color. estimated = 근사 노선("예상", `docs/data-licenses.md`) |
 | stop\_exits | stop\_id, name, location, has\_elevator | 2단계, OSM·운영사 |
 | car\_positions | stop\_id, line\_id, direction, best\_cars(int\[\]), for\_exit | 탈 칸 위치, 수작업·제보 |
 | alt\_courses | city\_id, name\_ko, kind(rain/local/...), place\_ids(uuid\[\]) | 대체 코스 정의 |
+
+**도시 이동 계수 `move_cap_factor`** — 도시마다 장소 사이 이동이 원래 오래 걸리는 정도가 다르므로(넓은 도시, 대중교통 배차가 긴 도시 등) 하루 이동 상한을 도시별로 늘리거나 줄인다. 배치 작업이 도시의 검수 장소 상위 100곳 사이 균형 모드 이동 시간 중앙값을 구해 도쿄 값으로 나눈 값을 제안하고(0.8\~2.0으로 자름), 운영자가 승인한다(13.1 등급 승인과 같은 흐름). 도쿄 = 1.0.
 
 **사용자·여행**
 
 | 테이블 | 주요 컬럼 | 메모 |
 | --- | --- | --- |
 | users | email, auth\_provider, is\_guest, locale | 게스트 → 로그인 시 병합 |
-| trips | user\_id, city\_id, start\_date, days, adults, children, companion, tastes(text\[\]), pace, budget, mix(0\~100), day\_end\_time, plan\_mode(fast/balance/cheap), prefs(jsonb) | prefs = 평가로 바뀐 가중치 (5.6) |
+| auth\_tokens | user\_id, token\_hash(SHA-256), expires\_at | Bearer 토큰, 원문은 저장하지 않음, 30일 만료 |
+| trips | user\_id, city\_id, trip\_style(city/area/multi\_city/road\_trip), start\_date, days, adults, children, companion, tastes(text\[\]), pace, budget, mix(0\~100), day\_end\_time, plan\_mode(fast/balance/cheap), prefs(jsonb) | prefs = 평가로 바뀐 가중치 (5.6) |
 | trip\_fixed\_bookings | trip\_id, place\_id, date, time | 고정 예약 |
-| trip\_days | trip\_id, day\_index, date, start\_time, cur\_index, delay\_gap, delay\_min | cur\_index = 지금 있는 장소 |
-| itinerary\_items | trip\_day\_id, position, place\_id, stay\_min, is\_fixed, status(planned/done/skipped) | 순서 = position |
-| itinerary\_snapshots | trip\_day\_id, items(jsonb), reason(user\_edit/auto\_adjust/generate), messages(text\[\]) | 되돌리기·분석용 |
+| trip\_days | trip\_id, day\_index, date, start\_time, plan\_mode, version, cur\_index, delay\_gap, delay\_min, kind(normal/travel/day\_trip), start\_location, end\_location, area\_id(nullable) | cur\_index = 지금 있는 장소, start/end\_location = 그날 숙소 (13.4) |
+| itinerary\_items | trip\_day\_id, position, place\_id, stay\_min, fixed\_at(고정 예약 시각), status(planned/done/skipped) | 순서 = position |
+| itinerary\_snapshots | trip\_day\_id, items(jsonb), reason(user\_edit/auto\_adjust/generate), plan\_mode, messages(text\[\]) | 되돌리기·분석용. generate는 이동 방식별로 하나씩(3안·처음 코스 비교) |
 | leg\_cache | from\_place\_id, to\_place\_id, mode, depart\_bucket(15분), route(jsonb), minutes, fare, estimated, fetched\_at | OTP 결과 캐시 |
 
 **후기·평가**
@@ -423,7 +481,7 @@ PostgreSQL + PostGIS. 모든 테이블에 `id`(UUID), `created_at`, `updated_at`
 | --- | --- | --- |
 | reviews | target\_type(place/stop/leg), target\_id, user\_id, text, rating, companion, tags(text\[\]), status | MVP는 시드 데이터만 노출 |
 | review\_keywords | target\_type, target\_id, keyword, count | 화면 키워드 칩 |
-| course\_ratings | trip\_day\_id, user\_id, stars, tags(text\[\]), route\_accuracy(ok/bit/off), apply\_next(bool), share\_anon(bool) |  |
+| course\_ratings | trip\_day\_id, user\_id, stars, tags(text\[\], 코드값), route\_accuracy(ok/bit/off), apply\_next(bool), share\_anon(bool) | (trip\_day\_id, user\_id) 유일 |
 | course\_place\_votes | course\_rating\_id, place\_id, vote(+1/−1) |  |
 
 **수익·크리에이터·분석**
@@ -446,6 +504,7 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 | POST /auth/magic-link, POST /auth/oauth | 로그인, 게스트 병합 | F-30 |
 | GET /cities | 도시 목록(출시 여부) | F-01 |
 | GET /places?city=&q=&type=&near= | 장소 검색 | F-01, F-05 |
+| GET /areas?city= | 지역 한정용 동네 목록 | F-32 |
 | GET /places/{id} | 장소 상세(영업시간·팁·후기 요약) | F-16, F-19 |
 | POST /trips | 여행 설정 저장 + 일정 3안 생성 | F-01, F-02 |
 | GET /trips/{id} | 여행 + 선택된 안의 전체 일정 | F-03 |
@@ -456,7 +515,7 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 | POST /trips/{id}/days/{day}/checkin | 도착 체크 → cur\_index 증가 | F-11 |
 | GET /legs?from=&to=&mode=&depart= | 구간 상세(단계·다음 열차·폴리라인·역 후기) | F-11\~F-13, F-17 |
 | GET /alerts?city=&lines= | 운행 이상 정보 | F-14 |
-| POST /course-ratings | 코스 평가 제출 → 반영 결과 | F-24, F-25 |
+| POST /course-ratings | 코스 평가 제출 → 반영 결과. `tags`는 코드값(5.6 표). 같은 날을 다시 평가하면 409 `already_rated`(반영이 두 번 되지 않게 하루에 평가 하나) | F-24, F-25 |
 | GET /phrases?city=&situation= | 문장 카드 | F-22 |
 | POST /affiliate-clicks | 예약 클릭 기록 → 이동 URL 반환 | F-20 |
 | POST /events | 분석 이벤트 묶음 전송 | 10장 |
@@ -488,7 +547,7 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
     "totals": {"moveMin": 94, "farePerPerson": 390, "spendPerPerson": 8800, "end": "19:50", "issues": 0},
     "rows": [
       {"kind": "stop", "placeId": "p_sensoji", "name": "센소지 · 나카미세 거리", "arrive": "09:00", "wait": 0, "start": "09:00", "end": "10:15", "stayMin": 75, "issue": null, "fixedAt": null},
-      {"kind": "leg", "from": "p_sensoji", "to": "p_tnm", "label": "긴자선", "color": "#F39700", "minutes": 18, "fare": 180, "path": "아사쿠사역 → 우에노역 · 3정거장", "estimated": false, "delayMin": 0}
+      {"kind": "leg", "from": "p_sensoji", "to": "p_tnm", "label": "긴자선", "color": "#F39700", "depart": "10:17", "waitMin": 2, "minutes": 18, "fare": 180, "path": "아사쿠사역 → 우에노역 · 3정거장", "estimated": false, "delayMin": 0}
     ]},
   "adjust": {"applied": true, "messages": ["야나카 긴자 상점가 체류 80분 → 50분으로 줄였어요"], "dropSuggestion": null, "fillGap": null, "undoAvailable": true},
   "baseline": {"moveMin": 94, "end": "19:50"}
@@ -514,13 +573,17 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 
 모든 외부 데이터는 출처·라이선스·갱신 주기를 `data_sources` 설정에 기록하고, 약관상 저장이 안 되는 데이터는 캐시 기간을 지킨다. 각 항목의 약관은 구현 전에 다시 확인한다.
 
+**유료 지도·길찾기 API 원칙** — 경로 계산과 지도 표시는 오픈소스 자체 운영(OTP 2, Protomaps)이 기본이고, 요청당 비용이 드는 상용 API(Google Maps Platform, 네이버·카카오, NAVITIME 등)는 쓰지 않는다. 상용 API는 무료 공개 데이터(GTFS·OSM)로 정확한 안내가 안 되는 지역을 열 때만, 그 지역 단위로 검토한다(13.1 기본·참고 등급). 도입 전에 결과 저장·캐시 약관이 `leg_cache`·오프라인 묶음(F-27)과 충돌하지 않는지 먼저 확인하고, 상용 제휴 계약이 필요한지(예: 카카오모빌리티는 무료 쿼터 안에서도 상업 이용 시 제휴 필요) 일정에 반영한다. 소요 시간 행렬은 장소 수의 제곱으로 호출이 늘어 상용 API 비용이 커지므로 자체 엔진으로 계산한다.
+
 | 데이터 | 소스 | 용도 | 갱신 | 메모 |
 | --- | --- | --- | --- | --- |
-| 대중교통 시간표·노선·역 | [ODPT 공공교통 오픈데이터](https://developer.odpt.org/) (GTFS·JSON), [Mobility Database](https://mobilitydatabase.org/) | OTP 그래프, 역·노선 테이블 | 주 1회 | API 키 필요, 사업자별 제공 범위 다름 |
-| 운행 정보·지연 | ODPT 실시간(GTFS-RT, 운행 정보) | F-14 | 1분 | 1단계는 알림만, 2단계 시간 반영 |
-| 도로·보행 네트워크, 지도 | OpenStreetMap | OTP 도보 경로, 지도 타일 | 월 1회 | ODbL 출처 표기 |
+| 대중교통 시간표·노선·역 (정밀) | [ODPT](https://developer.odpt.org/): 도쿄메트로·린카이·TX·다마 모노레일·유리카모메·버스 일부(기본 라이선스), 도에이 지하철·도에이 버스(CC BY 4.0) | OTP 그래프, 역·노선 테이블 | 주 1회 + 갱신 통지 후 1주 안 | 가입 필요. 상업 이용 가능분만. 기본 라이선스 의무사항은 `docs/data-licenses.md` |
+| 대중교통 노선·역 (근사) | 국토수치정보 N02(CC BY 4.0), OSM + 직접 확인한 요약 사실(배차 간격, 첫차·막차, 역 간 소요 시간) | JR 동일본·사철·공항선의 배차 간격 기반 GTFS, 모든 구간 "예상" | 시간표 개정(매년 3월) 때 + 분기 1회 확인 | ODPT 챌린지 한정 데이터와 JR 시간표 사이트 데이터는 쓰지 않음 |
+| 근사 운임 | 운영사·운수국·자원에너지청 공개 자료에서 직접 확인한 요약 사실(`data/pipelines/city_fares.toml`에 출처·확인일) | cities.fare\_table | 운임 개정 때 | 시간표가 아닌 운임 수준(사실)만 옮긴다 |
+| 운행 정보·지연 | ODPT 실시간(운행 정보): 도쿄메트로·도에이 등 상업 이용 가능분 | F-14 | 1분 | 1단계는 알림만, 2단계 시간 반영. 데이터 생성 시각 표시 의무. 그 외 노선은 운영사 운행 정보 페이지 링크 |
+| 도로·보행 네트워크, 지도 | OpenStreetMap | OTP 도보·자동차 경로, 지도 타일(Protomaps로 PMTiles 빌드, 자체 호스팅) | 월 1회 | ODbL 출처 표기 |
 | 경로 계산 | OpenTripPlanner 2 (자체 운영) | 구간 경로, 다음 열차, 소요 시간 행렬 | 그래프 재빌드 주 1회 |  |
-| 장소 기본 정보 | 관광청 공개 데이터, Wikidata, OSM, 편집팀 검수 | places, place\_hours | 월 1회 + 제보 | 상용 장소 API는 약관상 저장 제한 확인 후 결정 |
+| 장소 기본 정보 | 편집팀 수집(공식 사이트, `docs/data-licenses.md` 3장 규칙), Wikidata(CC0), Overture Places·Foursquare OS Places(후보), 도쿄도 오픈데이터(Wi-Fi·화장실) | places, place\_hours | 월 1회 + 제보 | OSM 장소, 국토수치정보 P12, JNTO, Google Places, Wikipedia 본문은 쓰지 않음 |
 | 장소 태그·팁·설명문 | LLM 일괄 생성 → 편집 검수 | place\_tags, tip\_ko | 신규 장소 때 | 런타임 호출 없음 |
 | 후기 (시드) | 편집팀 작성·요약, 이후 사용자 후기 | reviews, review\_keywords |  | 타사 후기 복제 금지 |
 | 탈 칸 위치·출구 | 운영사 공개 자료, 현지 조사, 사용자 제보 | car\_positions, stop\_exits | 수시 | 데이터 없으면 표시 안 함 |
@@ -531,9 +594,32 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 
 **OTP 운영 메모**
 
-- 도쿄 그래프 = ODPT·JR·사철 GTFS 묶음 + 간토 지역 OSM 추출본. 빌드는 별도 잡, 서비스 인스턴스는 메모리 8GB 이상.
-- API는 `leg_cache`(15분 버킷)로 OTP 호출을 줄인다. 일정 생성 시 소요 시간 행렬(장소 × 장소)은 병렬 질의 후 캐시.
+- 도쿄 그래프 = ODPT 상업 이용 가능분 GTFS + 근사 노선 GTFS(배차 간격 기반) + 간토 지역 OSM 추출본. 근사 노선 구간은 OTP 결과여도 `estimated: true`. 빌드는 별도 잡, 서비스 인스턴스는 메모리 8GB 이상.
+- API는 구간 결과를 Redis에 둔다(구간 캐시). 열쇠는 양끝 좌표·날짜·출발 준비 시각(분)·이동 방식·도시 운임이고, 성공한 결과만 `OTP_CACHE_TTL_S`(기본 6시간) 동안 둔다. 열차에 맞춘 출발 시각은 분 단위라 15분 버킷으로 묶지 않는다. Redis가 죽으면 캐시 없이 계산한다. 여행 조회는 날짜별 DB 읽기를 먼저 끝낸 뒤 계산을 동시에 돌리고, 일정이 처음 코스와 같으면 비교용 계산을 따로 하지 않는다. 환승 가능 노선 쌍·운임표는 프로세스 메모리에 10분 둔다(데이터 적재 때만 바뀐다).
 - OTP 장애 시 5.3 근사 규칙으로 응답하고 `estimated: true`를 붙인다.
+
+**경로 정확도 벤치마크 (상용 API 대비)**
+
+자체 엔진(OTP·근사 규칙) 결과가 상용 길찾기와 얼마나 다른지 정기적으로 잰다. 상용 API는 비교용으로만 쓰고 결과를 서비스에 쓰거나 저장해 두지 않는다(약관 확인 후 실행, 비교 결과는 집계값만 남김).
+
+- 비교 대상: 대중교통은 駅すぱあと API 무료 플랜(하루 100세션, 회차를 여러 날에 나눠 실행), 도보는 Google Maps Platform Routes API(무료 월 사용량 안). Google API는 일본 대중교통을 지원하지 않는다(Japan partners 제외). 비교 용도 이용이 각 약관상 허용되는지 먼저 확인한다. 상용 결과를 정답으로 보지 않고, 차이가 큰 구간은 운영사 공식 정보로 사람이 판정한다.
+- 표본: 장소 300곳에서 뽑은 150쌍 + 프로토타입 도쿄 3일 픽스처 구간 50쌍 = 200쌍 × 출발 시각 4개(평일 08:30, 13:00, 18:00, 주말 11:00) = 회당 800건. 표본은 고정 시드로 뽑아 매번 같게.
+- 대상: OTP 결과, 근사 규칙(5.3) 결과 각각을 상용 결과와 비교. 근사 규칙은 계수(5.3 근사식) 보정의 근거로 쓴다. 근사 노선(JR·사철) 구간과 정밀 노선 구간은 지표를 따로 집계한다.
+- 무료 데이터 영향 측정: 같은 표본에서 "메트로·도에이만" 경로와 "근사 노선 포함" 경로의 소요 시간 차이를 구해, 차이가 10분 넘는 쌍의 비율을 본다. 이 값과 코스 평가의 정확도 응답으로 유료 데이터 도입 여부를 판단한다.
+- 지표와 통과 기준(초안, P1 결과로 조정):
+
+| 지표 | 정의 | 통과 기준 (OTP) |
+| --- | --- | --- |
+| 소요 시간 차이 | \|자체 − 상용\| (분) | 중앙값 3분 이하, 5분 이내 비율 90% 이상 |
+| 노선 일치 | 첫 승차 노선이 같은 비율 | 80% 이상 |
+| 환승 횟수 일치 | 환승 횟수가 같은 비율 | 85% 이상 |
+| 운임 일치 | 1인 운임이 같은 비율 | 95% 이상 |
+| 실패율 | 자체 엔진이 경로를 못 찾은 비율 | 1% 이하 |
+
+- 차이가 큰 상위 20건은 원인(우리 GTFS 누락·OSM 보행망 오류·상용 쪽 오류)을 분류해 데이터 수정 큐에 넣는다.
+- 실행: P1 완료 기준에 포함, 이후 주 1회 OTP 그래프 재빌드 뒤 자동 실행(회귀 감시). 스크립트는 `data/pipelines`. 결과는 운영 대시보드에 회차별 추이로.
+- 자동차 여행(13.4)을 열기 전에는 같은 방식으로 자동차 구간을 비교한다. 상용 쪽은 교통 상황 반영 시간이므로 시간대별 차이를 따로 보고, 그 차이로 시간대별 보정 계수를 정한다.
+- 운영 중에는 코스 평가의 정확도 응답(S-09, "노선·시간이 정확했어요" 목표 85%)이 실사용 기준 지표다.
 
 ## 9. 디자인 시스템
 
@@ -586,11 +672,11 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 | --- | --- |
 | 성능 | 일정 3안 생성 p95 3초, 일정 변경 재계산 서버 p95 300ms, 앱 로컬 재계산 100ms 이하, 화면 반영 1초 이내. 앱 콜드 스타트 2초 이내(중급 안드로이드 기준) |
 | 오프라인 | 여행 시작 전 오프라인 묶음 자동 다운로드(일정, 장소, 구간 경로·시간표 스냅샷, 문장 카드, 지도 타일은 2단계). 오프라인에서도 일정 조작·자동 조정·문장 카드 동작. 온라인 복귀 시 버전 비교 후 동기화 |
-| 정확도 표시 | OTP 실시간 계산 결과만 "시간표" 표시, 근사 계산은 "예상" 배지. 장소 정보에 검증일 기록 |
+| 정확도 표시 | OTP 실시간 계산 결과만 "시간표" 표시, 근사 계산은 "예상" 배지. 장소 정보에 검증일 기록. 상용 API 대비 경로 정확도 벤치마크 주 1회 (8장) |
 | 위치·개인정보 | 위치는 기기에서만 사용(현재 위치 표시·도착 판단), 서버에는 도착 체크 이벤트만 전송. 익명 공유 동의는 평가 화면 토글로 받고 언제든 철회. 개인정보 처리방침·위치정보 이용약관 필요 |
 | 보안 | 토큰 만료 30일 + 갱신, 모든 API HTTPS, 제휴 URL은 서버 허용 목록에서만 생성 |
 | 접근성 | 대비 4.5:1, 터치 44pt, 동적 글자 크기, 스크린리더 라벨 (9장) |
-| 다국어 | UI 한국어 고정(문자열은 i18n 키로 분리), 장소명 한국어 + 현지어 병기 |
+| 다국어 | UI 한국어 고정(문자열은 i18n 키로 분리), 장소명 한국어 + 현지어 병기. 역·노선의 한국어 이름이 기계 변환(name\_ko\_source = machine)이면 "기계 번역" 표시 (ODPT 개발자 가이드라인 5) |
 | 안정성 | OTP·외부 API 장애 시 근사 계산으로 계속 동작, 크래시 없는 세션 99.5% |
 | 관측성 | API 요청 로그, 엔진 입력·출력 스냅샷(itinerary\_snapshots), 오류 추적 도구 연동 |
 
@@ -598,7 +684,7 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 
 | 이벤트 | 속성 | 지표 |
 | --- | --- | --- |
-| trip\_created | city, days, tastes\_count, pace, mix | 퍼널 시작 |
+| trip\_created | city, days, tastes\_count, pace, mix, trip\_style, transport | 퍼널 시작, 여행 형태 수요 |
 | plan\_selected | plan\_mode | 3안 선호 |
 | itinerary\_edited | op(remove/insert/move/stay/mode), source(sheet/inline/suggest) | 편집 빈도 |
 | auto\_adjusted | reason(edit/delay), changes(reorder/trim/drop\_suggest/fill\_suggest), undone(bool) | 자동 조정 수용률 |
@@ -616,7 +702,7 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 | 단계 | 기간 | 완료 기준 |
 | --- | --- | --- |
 | P0 기반 세팅 | 1주 | docker compose로 DB·OTP·API 헬스체크 통과 |
-| P1 데이터 | 2주 | OTP 닛포리→시부야 경로 응답, 장소 300곳 검수 |
+| P1 데이터 | 2주 | OTP 닛포리→시부야 경로 응답, 장소 300곳 검수, 경로 정확도 벤치마크 통과 (8장) |
 | P2 일정 엔진 | 2주 | 공통 픽스처 50개에서 Python·TS 결과 일치 |
 | P3 API | 1.5주 | API 통합 테스트 통과, 재계산 p95 300ms |
 | P4 앱 일정 화면 | 3주 | S-01~S-05 도쿄 3일 시나리오 E2E 통과 |
@@ -631,7 +717,9 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
    - CI: 린트, 타입 검사, pytest, Jest. `packages/ui-tokens`에 9장 토큰.
    - 이 PRD를 `/docs/PRD.md`로, 프로토타입 시안 링크를 `/docs/design.md`로 둔다.
 2. **P1 데이터**
-   - ODPT·JR 등 도쿄 GTFS 수집 스크립트 → stops, lines, stop\_lines 적재.
+   - ODPT 상업 이용 가능분(메트로·도에이 등) 수집 스크립트 → stops, lines, stop\_lines 적재. 챌린지 한정 데이터는 받지 않는다.
+   - JR·사철·공항선 근사 GTFS: 국토수치정보 N02 + OSM 노선·역 + 직접 확인한 배차 간격·소요 시간(출처 기록).
+   - 앱 출처·면책 표시와 데이터 취득 일시 화면(ODPT 가이드라인).
    - OSM 간토 추출본 + GTFS로 OTP 그래프 빌드 잡.
    - 장소 300곳 시드(CSV → places, place\_hours, place\_tags), LLM 태깅 배치는 검수 큐로.
    - 프로토타입 도쿄 3일(14곳 + 후보 15곳)을 테스트 픽스처로 먼저 넣는다.
@@ -665,22 +753,30 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 
 | 리스크 | 영향 | 대응 |
 | --- | --- | --- |
-| 교통 데이터 누락·오류 (사업자별 제공 범위 차이) | 잘못된 안내 → 신뢰 하락 | 사업자별 커버리지 점검표, 빠진 노선은 "예상" 표시, 평가의 정확도 응답으로 오류 구간 검증 |
+| 교통 데이터 누락·오류 (사업자별 제공 범위 차이) | 잘못된 안내 → 신뢰 하락 | 사업자별 커버리지 점검표(`docs/data-licenses.md`), JR·사철·공항선은 근사 + "예상" 표시, 평가의 정확도 응답으로 오류 구간 검증 |
+| 무료 데이터의 한계 (공항 이동·근교 당일치기의 정확한 시각 없음) | 첫날·마지막 날 일정 오차 | 공항 구간은 여유 시간을 넉넉히 두고 "예상" 표시, 벤치마크로 영향 측정 후 유료 데이터 검토 |
 | OTP 운영 비용·메모리 | 서버비 증가 | leg\_cache, 도시별 그래프 분리, 일정 생성 시 행렬 일괄 질의 |
 | 장소 영업시간 변경 | 문 닫은 곳으로 안내 | 검증일 표시, 월 1회 재검수, "정보가 달라요" 제보 버튼(2단계) |
 | 크리에이터 코스 저작권·퍼블리시티권 | 법적 분쟁 | 기능 플래그로 끄고 출시, 인증(계약) 코스만 실명 노출, 법률 검토 후 활성화 |
 | 자동 조정이 사용자 의도를 덮어씀 | 불만 | 항상 문장 설명 + 되돌리기, 지난 장소·현재 장소는 건드리지 않음 |
-| 지도 타일·번역 API 비용 | 운영비 | 사용량 모니터링, 문장 카드는 고정 문구로 API 호출 최소화 |
+| 지도 타일·번역 API 비용 | 운영비 | 지도는 자체 호스팅(Protomaps)으로 요청당 비용 없음, 번역은 사용량 모니터링 + 문장 카드 고정 문구로 API 호출 최소화 |
 
 **미결 사항 (결정 필요)**
 
-- [ ] 지도 타일 공급처: 상용(MapTiler 등) vs 자체 호스팅
+- [x] 지도 타일 공급처: Protomaps(PMTiles) 자체 호스팅으로 결정 (2026-10-26)
 - [ ] 번역 API: Papago vs Google Cloud Translation
-- [ ] 장소 데이터 출처 조합과 상용 장소 API 사용 여부 (약관상 저장 제한)
+- [x] 장소 데이터 출처 조합: 편집팀 수집 + Wikidata + Overture·Foursquare OS Places, 상용 장소 API 미사용 (2026-10-26, `docs/data-licenses.md`)
+- [ ] JR·사철 시간표 자체 구축 여부 (출시 전 일본 변호사 자문 후 결정)
+- [ ] ODPT 기본 라이선스상 오프라인 묶음(기기 저장) 허용 범위 (ODPT 사무국 문의)
+- [ ] 유료 시간표 데이터 도입 시점 (벤치마크의 무료 데이터 영향 측정 + 코스 평가 정확도로 판단. 후보: 교통신문사, ジョルダン, 駅すぱあと)
 - [ ] 제휴 예약 파트너 1순위 (승인 절차·수수료율 확인)
 - [ ] 앱 이름·브랜드 컬러 최종 (현재 청록 #0F766E 가안)
 - [ ] 로그인 필수 시점 (현재: 저장·동기화 때 유도)
 - [ ] 크리에이터 코스 법률 검토 일정
+- [ ] 자동차 여행 출시 단계 (현재 3단계)
+- [ ] 자동차 경로 엔진: OTP 자동차 모드 vs Valhalla 등 자동차 전용 오픈소스 엔진 (3단계 전 비교)
+- [ ] 한국 데이터 조사: 공공 대중교통 데이터의 GTFS 변환 가능 여부(제주 버스 포함), OSM 한국 도로 품질. 부족하면 네이버·카카오 상용 API 검토 (13.3)
+- [ ] 숙박 거점·휴게소 장소 데이터 출처
 
 **참고 자료**
 
@@ -750,8 +846,8 @@ REST + JSON, 기본 경로 `/v1`. 인증은 Bearer 토큰(게스트도 발급). 
 | 테이블 | 주요 컬럼 |
 | --- | --- |
 | countries | code, name\_ko, currency, default\_timezone, languages(text\[\]), entry\_info\_url |
-| cities (추가 컬럼) | country\_code, data\_tier(precise/basic/reference), tier\_updated\_at, airport\_codes(text\[\]) |
-| trip\_segments | trip\_id, city\_id, position, start\_date, end\_date, days\_locked(bool), overrides(jsonb) |
+| cities (추가 컬럼) | country\_code, data\_tier(precise/basic/reference), tier\_updated\_at, airport\_codes(text\[\]), kind(city/region: 홋카이도 같은 자동차 여행 지역) |
+| trip\_segments | trip\_id, city\_id, position, start\_date, end\_date, days\_locked(bool), overrides(jsonb), transport(transit/car), area\_ids(uuid\[\]), lodging\_name, lodging\_location(nullable) |
 | inter\_city\_legs | trip\_id, from\_segment\_id, to\_segment\_id, mode(flight/train/bus/ferry), depart\_date, est\_minutes, price\_min, price\_max, currency, booking\_url, estimated(bool) |
 | data\_reports | user\_id, target\_type, target\_id, kind(hours/closed/route/other), note, status |
 
@@ -771,7 +867,7 @@ trips의 city\_id는 단일 도시 여행 호환용으로 남기고, 모든 여�
 
 | 단계 | 범위 |
 | --- | --- |
-| MVP | 데이터 구조만 다도시 대응(cities.data\_tier, trip\_segments, 시간대·통화 분리), 첫 실행 고지와 등급 배지. 출시는 도쿄 1곳 |
+| MVP | 데이터 구조만 다도시·여행 형태 대응(cities.data\_tier, trip\_segments, 시간대·통화 분리, 13.4 값), 첫 실행 고지와 등급 배지. 출시는 도쿄 1곳 |
 | 2단계 | 한 나라 안 여러 도시(도쿄 + 오사카), 도시 간 기차 이동, S-11 |
 | 3단계 | 여러 나라 세계여행, 항공 예상·제휴 검색, S-12, 기본·참고 등급 도시 개방 |
 
@@ -781,3 +877,62 @@ trips의 city\_id는 단일 도시 여행 호환용으로 남기고, 모든 여�
 - **시간·통화:** 모든 일정 시각은 도시 현지 시간대, 서머타임 처리, 금액은 현지 통화 + 원화 환산(환율 일 1회 갱신).
 - **공휴일:** 나라별 공휴일 데이터를 넣어 휴무·혼잡을 반영.
 - **언어:** UI는 한국어 우선, 문장 카드는 나라 언어별로 만들고 원어민 검수.
+
+### 13.4 여행 형태
+
+여행 형태가 달라도 엔진은 하나다. 형태는 S-01에서 고르는 프리셋이고, 엔진은 프리셋이 채운 값(거점·이동 수단·지역·하루 시작/끝 지점)만 본다. 프리셋에 없는 조합(예: 유럽 여러 도시 중 한 구간만 렌터카)도 거점마다 값을 바꿔 표현한다.
+
+**엔진이 보는 값**
+
+| 값 | 위치 | 의미 |
+| --- | --- | --- |
+| 거점 | trip\_segments | 같은 숙소권에 머무는 기간. 한 도시 여행은 1개, 여러 도시는 도시마다 1개 |
+| 이동 수단 | trip\_segments.transport (transit/car) | 대중교통·도보 또는 자동차 |
+| 지역 | trip\_segments.area\_ids | 비어 있으면 도시 전체, 있으면 고른 동네 안 장소만 후보 |
+| 하루 시작·끝 | trip\_days.start\_location, end\_location | 그날 숙소. 없으면 첫 장소에서 시작, 마지막 장소에서 끝 (5.1) |
+| 날 종류 | trip\_days.kind (normal/travel/day\_trip) | 보통 날 / 거점 간 이동일(13.2) / 당일치기 |
+
+**형태별 프리셋**
+
+| 형태 (trip\_style) | 예 | 거점 | 이동 수단 | 지역 | 이동 상한 | 단계 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 한 도시 (city) | 도쿄 3일 | 1개 | transit | 도시 전체 | MOVE\_CAP | MVP |
+| 한 지역만 (area) | 아사쿠사·우에노 2일 | 1개 | transit | 고른 동네 | MOVE\_CAP | MVP (P1) |
+| 여러 도시 (multi\_city) | 도쿄 → 오사카 | 도시마다 | transit, 도시 간은 기차·항공 | 도시 전체 | MOVE\_CAP + 이동일 규칙 (13.2) | 2·3단계 |
+| 자동차 여행 (road\_trip) | 홋카이도 6일, 제주 4일 | 1박마다 바뀔 수 있음 (숙소 고정 선택 가능) | car | 지역 (cities.kind = region) | DRIVE\_CAP | 3단계 |
+
+- **당일치기**는 형태가 아니라 날 단위 옵션이다. 어느 형태에서나 S-03 일자 메뉴 "이 날은 당일치기로"에서 지역을 고르고(2단계), 거점에서 편도 DAY\_TRIP\_MAX 이하인 지역만 보여준다. 그날 후보는 그 지역 안 장소, 왕복 구간은 이동 상한 합에서 뺀다.
+- **숙소 위치**는 모든 형태에서 선택 입력이다. 넣지 않으면 지금처럼 첫 장소에서 시작한다.
+
+**이동 상한 적용 규칙**
+
+- 대중교통 거점: 관광 이동(숙소↔장소, 장소↔장소) 합 ≤ MOVE\_CAP × 도시 계수 × 평가 보정. 거점 간 이동일과 당일치기 왕복은 합에서 빼고 각각 13.2 이동일 규칙, DAY\_TRIP\_MAX로 제한한다.
+- 자동차 거점: 숙소 간 이동까지 포함한 하루 운전 합 ≤ DRIVE\_CAP × 평가 보정. 도시 계수는 쓰지 않는다(운전 거리 자체를 거시 계획에서 나누기 때문). 연속 운전 휴식은 compute가 넣는다(5.1-8).
+- 넘을 때: 대중교통은 5.2-6 가까운 곳 교체. 자동차는 먼저 아래 거시 계획 4단계로 숙소 위치를 다시 잡고, 그래도 넘으면 5.2-6 교체.
+
+**자동차 여행 거시 계획 (`planTrip`의 자동차 분기)**
+
+1. 입력: 지역, 출발·도착 지점(렌터카 대여·반납 위치, 같아도 됨), 일수, 꼭 갈 곳, 이미 예약한 숙소(날짜별, 선택), 숙소 고정 여부.
+2. 핵심 장소: 꼭 갈 곳 + 지역 안 후보 점수(5.2-1) 상위 장소. 개수 = 일수 × 하루 장소 수(5.2-2).
+3. 순서: 출발 → 도착 열린 경로 외판원 문제(운전 시간 행렬, OTP 자동차 모드). 예약한 숙소는 그날 밤 지나야 할 지점으로 고정한다.
+4. 날짜 나누기: 순서대로 운전 + 체류를 쌓다가, 하루 운전이 DRIVE\_CAP을 넘거나 종료가 DAY\_END를 넘기 직전에 끊는다. 그날 밤 숙소 = 예약 숙소, 없으면 끊은 지점에서 운전 시간이 가장 짧은 `숙박 거점` 장소. 숙소 고정이면 이 단계를 건너뛰고 매일 같은 숙소로 돌아온다. 날이 남으면 후보로 채우고, 모자라면 마지막 날부터 평점 낮은 장소를 뺀다.
+5. 날마다 5.2 생성을 돌린다(시작 = 전날 숙소, 끝 = 오늘 숙소, 이동 수단 car, 1안).
+6. 숙소는 직접 예약하지 않고 숙박 거점마다 \[숙소 검색\] 제휴 링크로 넘긴다(비목표: 자체 숙소 검색).
+7. 재계산: 일수 ±1, 숙소 변경, 꼭 갈 곳 추가 때 3\~5를 다시 돌린다. 지난 날짜와 예약 숙소는 건드리지 않는다.
+
+`planTrip`은 `generate`처럼 서버에서만 돈다. 앱(`packages/engine-ts`)은 하루 단위 compute·autoAdjust·suggest만 자동차 근사 규칙(5.3)으로 오프라인 재계산한다.
+
+**자동차 여행 화면 차이**
+
+- S-01: "자동차 여행"을 고르면 도시 카드 대신 지역 카드, 대여·반납 위치 입력, "숙소 한 곳에 묵어요" 토글. 4단계 템포 옆에 하루 운전 표시(3시간 / 4시간 30분 / 6시간).
+- S-02: 3안 비교 대신 1안 카드 + 날짜별 숙박 거점·운전 시간.
+- S-03: 다음 이동 카드는 "차로 45분 · 주차 ¥800", 이동 구간은 노선 색 대신 회색 선, 휴식 구간 "휴게소에서 15분 쉬어 가요". 이동 방식 칩은 숨긴다.
+- S-06: 단계별 열차 안내 대신 \[내비로 열기\](Google 지도·기기 기본 지도 딥링크) + 주차 정보. 다음 열차·탈 칸은 숨긴다.
+- 모든 운전 구간에 "예상" 배지(5.3), 비용 줄에 "통행료 별도".
+
+인수 조건
+
+- [ ] 엔진은 trip_style을 읽지 않는다. 같은 거점·이동 수단·지역·시작/끝 값이면 형태와 관계없이 결과가 같다
+- [ ] 숙소 위치를 넣으면 첫 구간이 숙소 출발, 마지막 구간이 숙소 도착으로 계산된다
+- [ ] 지역 한정 여행의 모든 일정·추천 후보가 고른 동네 안에 있다
+- [ ] 자동차 여행의 날마다 운전 합 ≤ DRIVE\_CAP × 평가 보정, 넘으면 "이동이 긴 날이에요" 표시

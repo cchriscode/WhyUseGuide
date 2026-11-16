@@ -1,0 +1,209 @@
+import csv
+import io
+import zipfile
+from dataclasses import dataclass, field
+from datetime import date
+from pathlib import Path
+
+REQUIRED_FILES = ("agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt")
+
+
+@dataclass
+class FeedReport:
+    path: Path
+    routes: int = 0
+    stops: int = 0
+    trips: int = 0
+    service_start: date | None = None
+    service_end: date | None = None
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
+
+def _rows(zf: zipfile.ZipFile, name: str) -> list[dict[str, str]]:
+    with zf.open(name) as raw:
+        return list(csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8-sig")))
+
+
+def _yyyymmdd(value: str) -> date:
+    return date(int(value[:4]), int(value[4:6]), int(value[6:8]))
+
+
+def _service_period(zf: zipfile.ZipFile, names: set[str]) -> tuple[date | None, date | None]:
+    """(운행 시작일, 종료일). feed_info와 calendar 중 가장 넓은 범위."""
+    starts: list[date] = []
+    ends: list[date] = []
+    for name, start_key, end_key in (
+        ("feed_info.txt", "feed_start_date", "feed_end_date"),
+        ("calendar.txt", "start_date", "end_date"),
+    ):
+        if name in names:
+            rows = _rows(zf, name)
+            starts += [_yyyymmdd(r[start_key]) for r in rows if r.get(start_key)]
+            ends += [_yyyymmdd(r[end_key]) for r in rows if r.get(end_key)]
+    return (min(starts) if starts else None, max(ends) if ends else None)
+
+
+def _read_feed(path: Path, report: FeedReport) -> None:
+    with zipfile.ZipFile(path) as zf:
+        names = set(zf.namelist())
+        missing = [n for n in REQUIRED_FILES if n not in names]
+        if missing:
+            report.errors.append(f"missing files: {', '.join(missing)}")
+            return
+        if "calendar.txt" not in names and "calendar_dates.txt" not in names:
+            report.errors.append("missing files: calendar.txt or calendar_dates.txt")
+        report.routes = len(_rows(zf, "routes.txt"))
+        report.stops = len(_rows(zf, "stops.txt"))
+        report.trips = len(_rows(zf, "trips.txt"))
+        report.service_start, report.service_end = _service_period(zf, names)
+
+
+def validate_feed(path: Path, today: date, warn_within_days: int = 30) -> FeedReport:
+    """OTP에 넣기 전 최소 점검: 필수 파일, 행 수, 서비스 기간.
+
+    파일이 없거나 zip이 깨졌으면 예외 대신 오류로 보고한다(한 출처 때문에 전체 실행이 멈추지 않게).
+    """
+    report = FeedReport(path=path)
+    if not path.exists():
+        report.errors.append("not fetched")
+        return report
+    try:
+        _read_feed(path, report)
+    except zipfile.BadZipFile:
+        report.errors.append("not a zip file")
+    if report.errors:
+        return report
+    for label, count in (("routes", report.routes), ("stops", report.stops), ("trips", report.trips)):
+        if count == 0:
+            report.errors.append(f"{label}.txt has no rows")
+    if report.service_end is None:
+        report.warnings.append("service end date unknown")
+    elif report.service_end < today:
+        report.errors.append(f"feed expired on {report.service_end}")
+    elif (report.service_end - today).days <= warn_within_days:
+        report.warnings.append(f"feed expires on {report.service_end}")
+    return report
+
+
+def stage_for_otp(src: Path, dst: Path) -> list[str]:
+    """GTFS zip을 OTP 입력으로 복사한다. OTP가 읽다가 멈추는 파일은 빼고, 뺀 파일 이름을 돌려준다.
+
+    옛 GTFS-JP 형식의 translations.txt(trans_id,lang,translation)는 OTP가 필수 칸(table_name)이 없다며
+    그래프 빌드 전체를 멈춘다. 경로 계산에는 번역이 필요 없어서 그 파일만 뺀다.
+    """
+    dropped = []
+    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == "translations.txt":
+                header = data.decode("utf-8-sig", errors="replace").splitlines()[:1]
+                if not header or "table_name" not in header[0].split(","):
+                    dropped.append(item.filename)
+                    continue
+            zout.writestr(item, data)
+    return dropped
+
+
+@dataclass(frozen=True)
+class GtfsLine:
+    route_id: str
+    name_local: str
+    name_en: str | None
+    color_hex: str | None
+    operator: str
+    name_ko: str | None = None  # 피드가 주는 공식 한국어 이름(translations.txt)
+
+
+@dataclass(frozen=True)
+class GtfsStop:
+    stop_id: str
+    code: str | None
+    name_local: str
+    name_en: str | None
+    lat: float
+    lon: float
+    parent_stop_id: str | None
+    name_ko: str | None = None  # 피드가 주는 공식 한국어 이름(translations.txt)
+
+
+@dataclass
+class Network:
+    lines: list[GtfsLine]
+    stops: list[GtfsStop]
+    stop_lines: set[tuple[str, str]]  # (stop_id, route_id)
+
+
+# GTFS location_type: 0/빈값 = 승강장, 1 = 역.
+# 출입구(2)·통로 노드(3)·승차 위치(4)는 stop_exits 단계에서 다룬다.
+STOP_LOCATION_TYPES = ("", "0", "1")
+
+
+def _translations(zf: zipfile.ZipFile, names: set[str], lang: str) -> dict[tuple[str, str], str]:
+    """(table.field, record_id 또는 원래 값) → 번역.
+
+    GTFS는 record_id 방식과 field_value 방식을 모두 허용한다.
+    """
+    if "translations.txt" not in names:
+        return {}
+    out: dict[tuple[str, str], str] = {}
+    for r in _rows(zf, "translations.txt"):
+        if r.get("language") != lang:
+            continue
+        key = r.get("record_id") or r.get("field_value") or ""
+        out[(f"{r['table_name']}.{r['field_name']}", key)] = r["translation"]
+    return out
+
+
+def _color(value: str | None) -> str | None:
+    value = (value or "").strip().lstrip("#")
+    return f"#{value.upper()}" if len(value) == 6 else None
+
+
+def read_network(path: Path) -> Network:
+    """역·노선·역별 노선을 읽는다. 역별 노선은 실제 운행(stop_times)에서 뽑는다."""
+    with zipfile.ZipFile(path) as zf:
+        names = set(zf.namelist())
+        en = _translations(zf, names, "en")
+        ko = _translations(zf, names, "ko")
+        agencies = {r.get("agency_id", ""): r["agency_name"] for r in _rows(zf, "agency.txt")}
+        default_agency = next(iter(agencies.values()))
+        lines = []
+        for r in _rows(zf, "routes.txt"):
+            name = r.get("route_long_name") or r.get("route_short_name") or r["route_id"]
+            lines.append(
+                GtfsLine(
+                    route_id=r["route_id"],
+                    name_local=name,
+                    name_en=en.get(("routes.route_long_name", r["route_id"]))
+                    or en.get(("routes.route_long_name", name)),
+                    color_hex=_color(r.get("route_color")),
+                    operator=agencies.get(r.get("agency_id", ""), default_agency),
+                    name_ko=ko.get(("routes.route_long_name", r["route_id"]))
+                    or ko.get(("routes.route_long_name", name)),
+                )
+            )
+        stops = [
+            GtfsStop(
+                stop_id=r["stop_id"],
+                code=r.get("stop_code") or None,
+                name_local=r["stop_name"],
+                name_en=en.get(("stops.stop_name", r["stop_id"]))
+                or en.get(("stops.stop_name", r["stop_name"])),
+                lat=float(r["stop_lat"]),
+                lon=float(r["stop_lon"]),
+                parent_stop_id=r.get("parent_station") or None,
+                name_ko=ko.get(("stops.stop_name", r["stop_id"]))
+                or ko.get(("stops.stop_name", r["stop_name"])),
+            )
+            for r in _rows(zf, "stops.txt")
+            if r.get("location_type", "") in STOP_LOCATION_TYPES
+        ]
+        route_of_trip = {r["trip_id"]: r["route_id"] for r in _rows(zf, "trips.txt")}
+        stop_lines = {(r["stop_id"], route_of_trip[r["trip_id"]]) for r in _rows(zf, "stop_times.txt")}
+    stop_ids = {s.stop_id for s in stops}
+    return Network(lines=lines, stops=stops, stop_lines={p for p in stop_lines if p[0] in stop_ids})

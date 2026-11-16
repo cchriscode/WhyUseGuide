@@ -1,0 +1,143 @@
+{
+ "name": "adjust-reorder",
+ "kind": "autoAdjust",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "A"
+    },
+    {
+     "placeId": "B"
+    }
+   ],
+   "places": {
+    "A": {
+     "id": "A",
+     "name": "A",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60
+    },
+    "B": {
+     "id": "B",
+     "name": "B",
+     "type": "박물관",
+     "lat": 35.68,
+     "lon": 139.7,
+     "defaultStayMin": 60,
+     "close": "11:00"
+    }
+   },
+   "legs": [
+    {
+     "from": "A",
+     "to": "B",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0
+    },
+    {
+     "from": "B",
+     "to": "A",
+     "planMode": "balance",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0
+    }
+   ]
+  },
+  "cur": -1
+ },
+ "expected": {
+  "items": [
+   {
+    "placeId": "B",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "A",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ],
+  "result": {
+   "rows": [
+    {
+     "kind": "stop",
+     "placeId": "B",
+     "name": "B",
+     "arrive": "09:00",
+     "wait": 0,
+     "start": "09:00",
+     "end": "10:00",
+     "stayMin": 60,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "B",
+     "to": "A",
+     "mode": "transit",
+     "minutes": 10,
+     "fare": 180,
+     "km": 3.0,
+     "estimated": false,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "10:00"
+    },
+    {
+     "kind": "stop",
+     "placeId": "A",
+     "name": "A",
+     "arrive": "10:10",
+     "wait": 0,
+     "start": "10:10",
+     "end": "11:10",
+     "stayMin": 60,
+     "issue": null,
+     "fixedAt": null
+    }
+   ],
+   "totals": {
+    "moveMin": 10,
+    "farePerPerson": 180,
+    "spendPerPerson": 180,
+    "end": "11:10",
+    "issues": 0,
+    "overEnd": false
+   }
+  },
+  "applied": true,
+  "messages": [
+   "순서를 바꿨어요: B을(를) 1번째로, A을(를) 2번째로",
+   "조정 후 11:10 종료 · 예약과 영업시간 모두 맞아요"
+  ],
+  "dropSuggestion": null,
+  "fillGap": null,
+  "undoItems": [
+   {
+    "placeId": "A",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "B",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ]
+ }
+}

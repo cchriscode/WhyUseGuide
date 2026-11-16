@@ -1,0 +1,406 @@
+{
+ "name": "random-40-autoAdjust",
+ "kind": "autoAdjust",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "40-0"
+    },
+    {
+     "placeId": "40-1"
+    },
+    {
+     "placeId": "40-2"
+    },
+    {
+     "placeId": "40-3"
+    },
+    {
+     "placeId": "40-4"
+    },
+    {
+     "placeId": "40-5",
+     "stayMin": 90
+    }
+   ],
+   "places": {
+    "40-0": {
+     "id": "40-0",
+     "name": "장소40-0",
+     "type": "카페 거리",
+     "lat": 35.69185,
+     "lon": 139.75312,
+     "defaultStayMin": 120,
+     "rating": 4.4,
+     "costPerPerson": 500,
+     "indoor": false,
+     "stations": {
+      "H": 0.564
+     }
+    },
+    "40-1": {
+     "id": "40-1",
+     "name": "장소40-1",
+     "type": "카페 거리",
+     "lat": 35.7293,
+     "lon": 139.80455,
+     "defaultStayMin": 60,
+     "rating": 4.1,
+     "costPerPerson": 0,
+     "indoor": false,
+     "stations": {}
+    },
+    "40-2": {
+     "id": "40-2",
+     "name": "장소40-2",
+     "type": "박물관",
+     "lat": 35.72244,
+     "lon": 139.8064,
+     "defaultStayMin": 75,
+     "rating": 3.1,
+     "costPerPerson": 0,
+     "indoor": false,
+     "stations": {
+      "A": 0.419
+     }
+    },
+    "40-3": {
+     "id": "40-3",
+     "name": "장소40-3",
+     "type": "공원",
+     "lat": 35.6836,
+     "lon": 139.78451,
+     "defaultStayMin": 30,
+     "rating": 4.4,
+     "costPerPerson": 0,
+     "indoor": false,
+     "stations": {},
+     "open": "09:00",
+     "close": "17:00"
+    },
+    "40-4": {
+     "id": "40-4",
+     "name": "장소40-4",
+     "type": "전망",
+     "lat": 35.7077,
+     "lon": 139.76309,
+     "defaultStayMin": 45,
+     "rating": 3.7,
+     "costPerPerson": 1000,
+     "indoor": false,
+     "stations": {
+      "A": 0.456
+     }
+    },
+    "40-5": {
+     "id": "40-5",
+     "name": "장소40-5",
+     "type": "박물관",
+     "lat": 35.68984,
+     "lon": 139.70731,
+     "defaultStayMin": 75,
+     "rating": 4.1,
+     "costPerPerson": 2000,
+     "indoor": false,
+     "stations": {},
+     "open": "09:30",
+     "close": "16:30"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "fast"
+  },
+  "cur": -1
+ },
+ "expected": {
+  "items": [
+   {
+    "placeId": "40-4",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-5",
+    "stayMin": 90,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-3",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-2",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-1",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-0",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ],
+  "result": {
+   "rows": [
+    {
+     "kind": "stop",
+     "placeId": "40-4",
+     "name": "장소40-4",
+     "arrive": "09:00",
+     "wait": 0,
+     "start": "09:00",
+     "end": "09:45",
+     "stayMin": 45,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "40-4",
+     "to": "40-5",
+     "mode": "taxi",
+     "minutes": 25,
+     "fare": 2878,
+     "km": 7.04,
+     "estimated": true,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "09:45"
+    },
+    {
+     "kind": "stop",
+     "placeId": "40-5",
+     "name": "장소40-5",
+     "arrive": "10:10",
+     "wait": 0,
+     "start": "10:10",
+     "end": "11:40",
+     "stayMin": 90,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "40-5",
+     "to": "40-3",
+     "mode": "taxi",
+     "minutes": 30,
+     "fare": 3706,
+     "km": 9.11,
+     "estimated": true,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "11:40"
+    },
+    {
+     "kind": "stop",
+     "placeId": "40-3",
+     "name": "장소40-3",
+     "arrive": "12:10",
+     "wait": 0,
+     "start": "12:10",
+     "end": "12:40",
+     "stayMin": 30,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "40-3",
+     "to": "40-2",
+     "mode": "taxi",
+     "minutes": 23,
+     "fare": 2530,
+     "km": 6.17,
+     "estimated": true,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "12:40"
+    },
+    {
+     "kind": "stop",
+     "placeId": "40-2",
+     "name": "장소40-2",
+     "arrive": "13:05",
+     "wait": 0,
+     "start": "13:05",
+     "end": "14:20",
+     "stayMin": 75,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "40-2",
+     "to": "40-1",
+     "mode": "walk",
+     "minutes": 14,
+     "fare": 0,
+     "km": 1.02,
+     "estimated": true,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "14:20"
+    },
+    {
+     "kind": "stop",
+     "placeId": "40-1",
+     "name": "장소40-1",
+     "arrive": "14:35",
+     "wait": 0,
+     "start": "14:35",
+     "end": "15:35",
+     "stayMin": 60,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "40-1",
+     "to": "40-0",
+     "mode": "taxi",
+     "minutes": 28,
+     "fare": 3306,
+     "km": 8.11,
+     "estimated": true,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "15:35"
+    },
+    {
+     "kind": "stop",
+     "placeId": "40-0",
+     "name": "장소40-0",
+     "arrive": "16:05",
+     "wait": 0,
+     "start": "16:05",
+     "end": "18:05",
+     "stayMin": 120,
+     "issue": null,
+     "fixedAt": null
+    }
+   ],
+   "totals": {
+    "moveMin": 120,
+    "farePerPerson": 12420,
+    "spendPerPerson": 15920,
+    "end": "18:05",
+    "issues": 0,
+    "overEnd": false
+   }
+  },
+  "applied": true,
+  "messages": [
+   "순서를 바꿨어요: 장소40-4을(를) 1번째로, 장소40-5을(를) 2번째로, 장소40-3을(를) 3번째로, 장소40-2을(를) 4번째로, 장소40-1을(를) 5번째로, 장소40-0을(를) 6번째로",
+   "조정 후 18:05 종료 · 예약과 영업시간 모두 맞아요"
+  ],
+  "dropSuggestion": null,
+  "fillGap": null,
+  "undoItems": [
+   {
+    "placeId": "40-0",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-1",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-2",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-3",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-4",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "40-5",
+    "stayMin": 90,
+    "fixedAt": null
+   }
+  ]
+ }
+}

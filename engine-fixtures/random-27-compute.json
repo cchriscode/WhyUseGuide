@@ -1,0 +1,253 @@
+{
+ "name": "random-27-compute",
+ "kind": "compute",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "27-0"
+    },
+    {
+     "placeId": "27-1"
+    },
+    {
+     "placeId": "27-2"
+    },
+    {
+     "placeId": "27-3"
+    }
+   ],
+   "places": {
+    "27-0": {
+     "id": "27-0",
+     "name": "장소27-0",
+     "type": "신사·사찰",
+     "lat": 35.67861,
+     "lon": 139.72901,
+     "defaultStayMin": 90,
+     "rating": 3.0,
+     "costPerPerson": 500,
+     "indoor": false,
+     "stations": {
+      "M": 0.408
+     },
+     "open": "09:00",
+     "close": "17:00",
+     "lastEntry": "16:30"
+    },
+    "27-1": {
+     "id": "27-1",
+     "name": "장소27-1",
+     "type": "맛집",
+     "lat": 35.6766,
+     "lon": 139.71587,
+     "defaultStayMin": 90,
+     "rating": 4.3,
+     "costPerPerson": 0,
+     "indoor": false,
+     "stations": {
+      "A": 0.083,
+      "G": 0.617
+     },
+     "open": "09:30",
+     "close": "16:30"
+    },
+    "27-2": {
+     "id": "27-2",
+     "name": "장소27-2",
+     "type": "전망",
+     "lat": 35.6863,
+     "lon": 139.74256,
+     "defaultStayMin": 45,
+     "rating": 4.6,
+     "costPerPerson": 2000,
+     "indoor": false,
+     "stations": {
+      "O": 0.348
+     },
+     "open": "09:30",
+     "close": "16:30"
+    },
+    "27-3": {
+     "id": "27-3",
+     "name": "장소27-3",
+     "type": "전망",
+     "lat": 35.72782,
+     "lon": 139.69166,
+     "defaultStayMin": 30,
+     "rating": 3.0,
+     "costPerPerson": 500,
+     "indoor": false,
+     "stations": {
+      "A": 0.621
+     },
+     "open": "10:00",
+     "close": "20:00"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "cheap"
+  }
+ },
+ "expected": {
+  "rows": [
+   {
+    "kind": "stop",
+    "placeId": "27-0",
+    "name": "장소27-0",
+    "arrive": "09:00",
+    "wait": 0,
+    "start": "09:00",
+    "end": "10:30",
+    "stayMin": 90,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "27-0",
+    "to": "27-1",
+    "mode": "walk",
+    "minutes": 21,
+    "fare": 0,
+    "km": 1.57,
+    "estimated": true,
+    "transfers": 0,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0,
+    "waitMin": 0,
+    "depart": "10:30"
+   },
+   {
+    "kind": "stop",
+    "placeId": "27-1",
+    "name": "장소27-1",
+    "arrive": "10:55",
+    "wait": 0,
+    "start": "10:55",
+    "end": "12:25",
+    "stayMin": 90,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "27-1",
+    "to": "27-2",
+    "mode": "transit",
+    "minutes": 41,
+    "fare": 180,
+    "km": 3.43,
+    "estimated": true,
+    "transfers": 2,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0,
+    "waitMin": 0,
+    "depart": "12:25"
+   },
+   {
+    "kind": "stop",
+    "placeId": "27-2",
+    "name": "장소27-2",
+    "arrive": "13:10",
+    "wait": 0,
+    "start": "13:10",
+    "end": "13:55",
+    "stayMin": 45,
+    "issue": null,
+    "fixedAt": null
+   },
+   {
+    "kind": "leg",
+    "from": "27-2",
+    "to": "27-3",
+    "mode": "transit",
+    "minutes": 60,
+    "fare": 210,
+    "km": 8.47,
+    "estimated": true,
+    "transfers": 2,
+    "label": "",
+    "delayMin": 0,
+    "breakMin": 0,
+    "waitMin": 0,
+    "depart": "13:55"
+   },
+   {
+    "kind": "stop",
+    "placeId": "27-3",
+    "name": "장소27-3",
+    "arrive": "14:55",
+    "wait": 0,
+    "start": "14:55",
+    "end": "15:25",
+    "stayMin": 30,
+    "issue": null,
+    "fixedAt": null
+   }
+  ],
+  "totals": {
+   "moveMin": 122,
+   "farePerPerson": 390,
+   "spendPerPerson": 3390,
+   "end": "15:25",
+   "issues": 0,
+   "overEnd": false
+  }
+ }
+}

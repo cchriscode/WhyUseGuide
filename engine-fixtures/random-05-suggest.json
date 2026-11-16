@@ -1,0 +1,255 @@
+{
+ "name": "random-05-suggest",
+ "kind": "suggest",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "5-0"
+    },
+    {
+     "placeId": "5-1"
+    }
+   ],
+   "places": {
+    "5-0": {
+     "id": "5-0",
+     "name": "장소5-0",
+     "type": "시장",
+     "lat": 35.65932,
+     "lon": 139.72773,
+     "defaultStayMin": 60,
+     "rating": 4.3,
+     "costPerPerson": 0,
+     "indoor": false,
+     "stations": {
+      "H": 0.674,
+      "M": 0.496
+     }
+    },
+    "5-1": {
+     "id": "5-1",
+     "name": "장소5-1",
+     "type": "시장",
+     "lat": 35.69983,
+     "lon": 139.72122,
+     "defaultStayMin": 60,
+     "rating": 3.9,
+     "costPerPerson": 500,
+     "indoor": false,
+     "stations": {
+      "H": 0.451
+     },
+     "open": "09:30",
+     "close": "16:30"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "balance",
+   "delay": {
+    "gap": 1,
+    "minutes": 20
+   }
+  },
+  "mode": "replace",
+  "cur": -1,
+  "position": 1,
+  "candidates": [
+   {
+    "id": "5-c0",
+    "name": "장소5-c0",
+    "type": "신사·사찰",
+    "lat": 35.67095,
+    "lon": 139.73693,
+    "defaultStayMin": 30,
+    "rating": 3.8,
+    "costPerPerson": 0,
+    "indoor": true,
+    "stations": {
+     "O": 0.233
+    }
+   },
+   {
+    "id": "5-c1",
+    "name": "장소5-c1",
+    "type": "공원",
+    "lat": 35.66728,
+    "lon": 139.78104,
+    "defaultStayMin": 30,
+    "rating": 4.3,
+    "costPerPerson": 0,
+    "indoor": false,
+    "stations": {
+     "A": 0.664
+    },
+    "open": "11:00",
+    "close": "22:00"
+   },
+   {
+    "id": "5-c2",
+    "name": "장소5-c2",
+    "type": "공원",
+    "lat": 35.68253,
+    "lon": 139.77819,
+    "defaultStayMin": 120,
+    "rating": 4.1,
+    "costPerPerson": 2000,
+    "indoor": false,
+    "stations": {},
+    "open": "11:00",
+    "close": "22:00"
+   },
+   {
+    "id": "5-c3",
+    "name": "장소5-c3",
+    "type": "시장",
+    "lat": 35.68901,
+    "lon": 139.76558,
+    "defaultStayMin": 75,
+    "rating": 3.8,
+    "costPerPerson": 0,
+    "indoor": true,
+    "stations": {
+     "H": 0.628
+    },
+    "open": "09:00",
+    "close": "17:00",
+    "lastEntry": "16:30"
+   },
+   {
+    "id": "5-c4",
+    "name": "장소5-c4",
+    "type": "시장",
+    "lat": 35.65612,
+    "lon": 139.71222,
+    "defaultStayMin": 60,
+    "rating": 5.0,
+    "costPerPerson": 0,
+    "indoor": true,
+    "stations": {
+     "A": 0.642,
+     "G": 0.112
+    },
+    "open": "09:00",
+    "close": "17:00",
+    "lastEntry": "16:30"
+   }
+  ]
+ },
+ "expected": [
+  {
+   "placeId": "5-c4",
+   "name": "장소5-c4",
+   "position": 1,
+   "score": -81.0,
+   "detourMin": -6,
+   "arrive": "10:55",
+   "endAfter": "11:55",
+   "absorbed": true,
+   "sameType": true,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "비슷한 곳",
+    "가는 길",
+    "실내"
+   ],
+   "effect": "이동이 6분 줄어요 · 끝나는 시간 그대로",
+   "warning": null
+  },
+  {
+   "placeId": "5-c3",
+   "name": "장소5-c3",
+   "position": 1,
+   "score": -44.8,
+   "detourMin": 3,
+   "arrive": "11:05",
+   "endAfter": "12:20",
+   "absorbed": false,
+   "sameType": true,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "비슷한 곳",
+    "가는 길",
+    "실내"
+   ],
+   "effect": "3분 돌아가요 · 끝나는 시간 20분 늦어져요",
+   "warning": null
+  },
+  {
+   "placeId": "5-c0",
+   "name": "장소5-c0",
+   "position": 1,
+   "score": -38.8,
+   "detourMin": 4,
+   "arrive": "11:05",
+   "endAfter": "11:35",
+   "absorbed": true,
+   "sameType": false,
+   "outsideHours": false,
+   "newIssues": 0,
+   "badges": [
+    "기다리는 시간 활용",
+    "가는 길",
+    "실내"
+   ],
+   "effect": "4분 돌아가요 · 끝나는 시간 그대로",
+   "warning": null
+  }
+ ]
+}

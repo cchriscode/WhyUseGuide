@@ -1,0 +1,19 @@
+# 도쿄 23구 일대(경도 139.56~139.92, 위도 35.53~35.82)의 관광지 후보. Wikidata CC0.
+# 유형: 박물관·미술관, 신사, 불교 사원, 공원, 정원, 탑·전망탑, 시장, 관광 명소. 위키 문서 3개 이상(이름이 알려진 곳)만.
+SELECT ?item ?cls ?ko ?ja ?en ?loc ?links ?site WHERE {
+  VALUES ?cls { wd:Q33506 wd:Q207694 wd:Q845945 wd:Q5393308 wd:Q22698 wd:Q1107656 wd:Q12518 wd:Q1440300 wd:Q37654 wd:Q570116 }
+  SERVICE wikibase:box {
+    ?item wdt:P625 ?loc .
+    bd:serviceParam wikibase:cornerSouthWest "Point(139.56 35.53)"^^geo:wktLiteral .
+    bd:serviceParam wikibase:cornerNorthEast "Point(139.92 35.82)"^^geo:wktLiteral .
+  }
+  ?item wdt:P31/wdt:P279* ?cls .
+  # "탑"·"시장" 분류에 섞여 들어오는 고층 빌딩·증권거래소·사무용 건물은 관광지 후보가 아니다.
+  MINUS { ?item wdt:P31 ?not . VALUES ?not { wd:Q11303 wd:Q11691 wd:Q1021645 } }
+  ?item wikibase:sitelinks ?links .
+  FILTER(?links >= 3)
+  OPTIONAL { ?item rdfs:label ?ko FILTER(lang(?ko) = "ko") }
+  OPTIONAL { ?item rdfs:label ?ja FILTER(lang(?ja) = "ja") }
+  OPTIONAL { ?item rdfs:label ?en FILTER(lang(?en) = "en") }
+  OPTIONAL { ?item wdt:P856 ?site }
+}

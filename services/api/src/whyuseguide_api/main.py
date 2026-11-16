@@ -1,0 +1,73 @@
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+import httpx
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from whyuseguide_api import errors
+from whyuseguide_api.config import Settings
+from whyuseguide_api.health import build_checks, run_checks
+from whyuseguide_api.routers import auth, catalog, ratings, trips
+from whyuseguide_api.timed import OtpPlanner, RedisLegCache
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings: Settings = app.state.settings
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    app.state.sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
+    redis = Redis.from_url(settings.redis_url)
+    async with (
+        httpx.AsyncClient(timeout=settings.health_timeout_s) as http,
+        httpx.AsyncClient(timeout=settings.otp_timeout_s) as otp,
+    ):
+        if not hasattr(app.state, "checks"):
+            app.state.checks = build_checks(settings, engine, redis, http)
+        cache = RedisLegCache(redis, settings.otp_cache_ttl_s) if settings.otp_cache_ttl_s > 0 else None
+        app.state.planner = (
+            OtpPlanner(otp, settings.otp_url, settings.otp_concurrency, cache)
+            if settings.otp_timed_legs
+            else None
+        )
+        yield
+    await redis.aclose()
+    await engine.dispose()
+
+
+def configure_logging(level: str) -> None:
+    """whyuseguide_api 로거를 표준 오류로 낸다(uvicorn은 자기 로거만 설정한다)."""
+    logger = logging.getLogger("whyuseguide_api")
+    logger.setLevel(level)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        logger.addHandler(handler)
+
+
+def create_app(settings: Settings | None = None) -> FastAPI:
+    app = FastAPI(title="WhyUseGuide API", lifespan=lifespan)
+    app.state.settings = settings or Settings()
+    configure_logging(app.state.settings.log_level)
+    errors.install(app)
+    app.include_router(auth.router)
+    app.include_router(catalog.router)
+    app.include_router(trips.router)
+    app.include_router(ratings.router)
+
+    @app.get("/health")
+    async def health(request: Request) -> JSONResponse:
+        results = await run_checks(request.app.state.checks, request.app.state.settings.health_timeout_s)
+        ok = all(r["ok"] for r in results.values())
+        return JSONResponse(
+            status_code=200 if ok else 503,
+            content={"status": "ok" if ok else "degraded", "checks": results},
+        )
+
+    return app
+
+
+app = create_app()

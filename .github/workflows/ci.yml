@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgis/postgis:16-3.6
+        env:
+          POSTGRES_DB: whyuseguide
+          POSTGRES_USER: whyuseguide
+          POSTGRES_PASSWORD: whyuseguide
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U whyuseguide -d whyuseguide"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://whyuseguide:whyuseguide@localhost:5432/whyuseguide
+      TEST_DATABASE_URL: postgresql+psycopg://whyuseguide:whyuseguide@localhost:5432/whyuseguide
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - run: uv sync --frozen --all-packages
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Typecheck
+        run: uv run mypy services/api/src services/api/tests services/engine/src services/engine/tests services/engine/scripts data/pipelines/src data/pipelines/tests
+      - name: Migrate
+        working-directory: services/api
+        run: |
+          until psql "postgresql://whyuseguide:whyuseguide@localhost:5432/whyuseguide" -tAc "select 1 from pg_extension where extname='postgis'" | grep -q 1; do sleep 2; done
+          uv run alembic upgrade head
+      - name: Test
+        run: uv run pytest services/api services/engine data/pipelines
+
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test

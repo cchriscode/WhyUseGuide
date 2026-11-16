@@ -1,0 +1,251 @@
+{
+ "name": "random-31-autoAdjust",
+ "kind": "autoAdjust",
+ "input": {
+  "day": {
+   "date": "2026-10-27",
+   "start": "09:00",
+   "items": [
+    {
+     "placeId": "31-0"
+    },
+    {
+     "placeId": "31-1"
+    },
+    {
+     "placeId": "31-2"
+    }
+   ],
+   "places": {
+    "31-0": {
+     "id": "31-0",
+     "name": "장소31-0",
+     "type": "전망",
+     "lat": 35.66289,
+     "lon": 139.81597,
+     "defaultStayMin": 45,
+     "rating": 4.9,
+     "costPerPerson": 2000,
+     "indoor": true,
+     "stations": {
+      "M": 0.151,
+      "Y": 0.799
+     },
+     "open": "09:00",
+     "close": "17:00"
+    },
+    "31-1": {
+     "id": "31-1",
+     "name": "장소31-1",
+     "type": "카페 거리",
+     "lat": 35.72687,
+     "lon": 139.74625,
+     "defaultStayMin": 60,
+     "rating": 3.2,
+     "costPerPerson": 0,
+     "indoor": false,
+     "stations": {
+      "H": 0.712,
+      "M": 0.746
+     },
+     "open": "11:00",
+     "close": "22:00"
+    },
+    "31-2": {
+     "id": "31-2",
+     "name": "장소31-2",
+     "type": "맛집",
+     "lat": 35.69193,
+     "lon": 139.81835,
+     "defaultStayMin": 60,
+     "rating": 3.3,
+     "costPerPerson": 0,
+     "indoor": true,
+     "stations": {},
+     "open": "09:30",
+     "close": "16:30"
+    }
+   },
+   "city": {
+    "lineLinks": [
+     [
+      "G",
+      "M"
+     ],
+     [
+      "M",
+      "H"
+     ],
+     [
+      "H",
+      "A"
+     ],
+     [
+      "Y",
+      "G"
+     ],
+     [
+      "Y",
+      "M"
+     ],
+     [
+      "Y",
+      "H"
+     ]
+    ],
+    "fareBands": [
+     {
+      "maxKm": 6,
+      "fare": 180
+     },
+     {
+      "maxKm": 11,
+      "fare": 210
+     },
+     {
+      "maxKm": 19,
+      "fare": 260
+     },
+     {
+      "maxKm": 99,
+      "fare": 330
+     }
+    ],
+    "taxi": {
+     "base": 500,
+     "baseKm": 1.096,
+     "perKm": 400
+    },
+    "fuelPerKm": 12
+   },
+   "planMode": "fast",
+   "delay": {
+    "gap": 2,
+    "minutes": 20
+   }
+  },
+  "cur": 1
+ },
+ "expected": {
+  "items": [
+   {
+    "placeId": "31-0",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "31-1",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "31-2",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ],
+  "result": {
+   "rows": [
+    {
+     "kind": "stop",
+     "placeId": "31-0",
+     "name": "장소31-0",
+     "arrive": "09:00",
+     "wait": 0,
+     "start": "09:00",
+     "end": "09:45",
+     "stayMin": 45,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "31-0",
+     "to": "31-1",
+     "mode": "transit",
+     "minutes": 47,
+     "fare": 260,
+     "km": 12.35,
+     "estimated": true,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 0,
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "09:45"
+    },
+    {
+     "kind": "stop",
+     "placeId": "31-1",
+     "name": "장소31-1",
+     "arrive": "10:35",
+     "wait": 25,
+     "start": "11:00",
+     "end": "12:00",
+     "stayMin": 60,
+     "issue": null,
+     "fixedAt": null
+    },
+    {
+     "kind": "leg",
+     "from": "31-1",
+     "to": "31-2",
+     "mode": "taxi",
+     "minutes": 32,
+     "fare": 4006,
+     "km": 9.86,
+     "estimated": true,
+     "transfers": 0,
+     "label": "",
+     "delayMin": 20,
+     "breakMin": 0,
+     "waitMin": 0,
+     "depart": "12:20"
+    },
+    {
+     "kind": "stop",
+     "placeId": "31-2",
+     "name": "장소31-2",
+     "arrive": "12:55",
+     "wait": 0,
+     "start": "12:55",
+     "end": "13:55",
+     "stayMin": 60,
+     "issue": null,
+     "fixedAt": null
+    }
+   ],
+   "totals": {
+    "moveMin": 79,
+    "farePerPerson": 4266,
+    "spendPerPerson": 6266,
+    "end": "13:55",
+    "issues": 0,
+    "overEnd": false
+   }
+  },
+  "applied": false,
+  "messages": [
+   "뒤 일정이 20분씩 밀렸어요"
+  ],
+  "dropSuggestion": null,
+  "fillGap": null,
+  "undoItems": [
+   {
+    "placeId": "31-0",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "31-1",
+    "stayMin": null,
+    "fixedAt": null
+   },
+   {
+    "placeId": "31-2",
+    "stayMin": null,
+    "fixedAt": null
+   }
+  ]
+ }
+}

@@ -10,3 +10,16 @@ __pycache__/
 .env.*
 !.env.example
 .DS_Store
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OTP 입력·그래프 (infra/otp/fetch-osm.sh로 받음)
+infra/otp/*.pbf
+infra/otp/*.part
+infra/otp/graph.obj
+infra/otp/*.log
+
+# 파이프라인이 받은 원자료
+data/raw/
+infra/otp/*.zip

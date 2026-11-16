@@ -1,0 +1,82 @@
+name: whyuseguide
+
+services:
+  db:
+    image: postgis/postgis:16-3.6
+    environment:
+      POSTGRES_DB: whyuseguide
+      POSTGRES_USER: whyuseguide
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-whyuseguide}
+    ports:
+      - "${DB_PORT:-15432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      # 초기화 스크립트(PostGIS 확장 생성)가 끝나야 healthy로 본다.
+      test: ["CMD-SHELL", "psql -U whyuseguide -d whyuseguide -tAc \"select 1 from pg_extension where extname='postgis'\" | grep -q 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-16379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # 그래프 빌드는 한 번만: docker compose --profile build run --rm otp-build
+  otp-build:
+    image: opentripplanner/opentripplanner:2.10.0
+    profiles: ["build"]
+    environment:
+      JAVA_OPTS: -Xmx8g
+    volumes:
+      - ./otp:/var/opentripplanner
+    command: ["--build", "--save"]
+
+  otp:
+    image: opentripplanner/opentripplanner:2.10.0
+    environment:
+      JAVA_OPTS: -Xmx6g
+    ports:
+      - "${OTP_PORT:-18080}:8080"
+    volumes:
+      - ./otp:/var/opentripplanner
+    command: ["--load", "--serve"]
+    healthcheck:
+      # 이미지에 curl이 없어 포트 열림만 본다. 실제 상태는 API /health가 액추에이터로 확인한다.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 60s
+
+  api:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://whyuseguide:${POSTGRES_PASSWORD:-whyuseguide}@db:5432/whyuseguide
+      REDIS_URL: redis://redis:6379/0
+      OTP_URL: http://otp:8080
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      otp:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  db-data:
