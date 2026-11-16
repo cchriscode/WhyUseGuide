@@ -3,6 +3,7 @@
 라우터(trips, ratings)가 같이 쓴다. 시간·순서·요금 계산은 일정 엔진과 timed(OTP 시간표 구간)가 한다.
 """
 
+import asyncio
 import enum
 import uuid
 from dataclasses import dataclass
@@ -367,14 +368,38 @@ async def generate_input(
 # --- 응답 만들기
 
 
-async def baseline_for(
-    session: AsyncSession, routing: Routing | None, trip: Trip, day: TripDay
-) -> DayResult | None:
-    """처음 생성한 일정(그날 이동 방식)의 결과. S-03 "처음 코스와 비교"."""
+@dataclass(frozen=True)
+class DayInput:
+    """하루를 그리는 데 필요한 것 중 DB에서 읽는 부분. 계산(OTP)은 이것만으로 한다."""
+
+    day: TripDay
+    current: EngineDay
+    baseline: EngineDay | None  # 처음 생성한 일정(그날 이동 방식). S-03 "처음 코스와 비교". 없으면 None
+    undo_available: bool
+
+
+async def day_input(session: AsyncSession, trip: Trip, day: TripDay) -> DayInput:
+    current = await engine_day(session, trip, day, await day_items(session, day))
     snap = await latest_snapshot(session, day, SnapshotReason.generate, day.plan_mode)
-    if snap is None:
-        return None
-    return await shown(await engine_day(session, trip, day, items_from(snap.items)), routing)
+    baseline = None
+    if snap is not None:
+        # 장소·숙소·이동 방식은 같고 순서(항목)만 처음 것으로
+        baseline = current.model_copy(update={"items": tuple(items_from(snap.items))})
+        missing = [it.place_id for it in baseline.items if it.place_id not in current.places]
+        if missing:  # 처음 코스에만 있던 장소(지금은 뺀 곳)의 정보를 더 읽는다
+            baseline = await engine_day(session, trip, day, list(baseline.items))
+    return DayInput(day, current, baseline, await undo_snapshot(session, day) is not None)
+
+
+async def compute_day(inp: DayInput, routing: Routing | None, adjust: AdjustResult | None = None) -> DayOut:
+    """DB 없이 계산만 한다(여러 날을 동시에 돌릴 수 있다). 지금 일정이 처음 코스와 같으면 한 번만 계산한다."""
+    if inp.baseline is None:
+        result, baseline = await shown(inp.current, routing), None
+    elif inp.baseline == inp.current:
+        result = baseline = await shown(inp.current, routing)
+    else:
+        result, baseline = await asyncio.gather(shown(inp.current, routing), shown(inp.baseline, routing))
+    return day_out(inp.day, result, adjust=adjust, undo_available=inp.undo_available, baseline=baseline)
 
 
 async def render_day(
@@ -384,25 +409,18 @@ async def render_day(
     day: TripDay,
     adjust: AdjustResult | None = None,
 ) -> DayOut:
-    items = await day_items(session, day)
-    result = await shown(await engine_day(session, trip, day, items), routing)
-    return day_out(
-        day,
-        result,
-        adjust=adjust,
-        undo_available=await undo_snapshot(session, day) is not None,
-        baseline=await baseline_for(session, routing, trip, day),
-    )
+    return await compute_day(await day_input(session, trip, day), routing, adjust)
 
 
 async def trip_out(session: AsyncSession, routing: Routing | None, trip: Trip) -> TripOut:
     days = (
         await session.execute(select(TripDay).where(TripDay.trip_id == trip.id).order_by(TripDay.day_index))
     ).scalars()
+    inputs = [await day_input(session, trip, d) for d in days]  # DB 세션은 한 번에 하나씩만 쓴다
     return TripOut(
         trip_id=str(trip.id),
         start_date=trip.start_date.isoformat(),
-        days=[await render_day(session, routing, trip, d) for d in days],
+        days=list(await asyncio.gather(*(compute_day(inp, routing) for inp in inputs))),
         plan_mode=trip.plan_mode,
         pace=trip.pace,
         tastes=list(trip.tastes),

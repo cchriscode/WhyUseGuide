@@ -2,7 +2,7 @@ import uuid
 
 import anyio
 from conftest import DB_URL, needs_db, place_id
-from sqlalchemy import Connection, Engine, delete, func, insert, select
+from sqlalchemy import Connection, Engine, delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from whyuseguide_api.bridge import place_stations
@@ -62,3 +62,36 @@ def test_place_stations_gives_nearest_station_per_line(db: Engine) -> None:
         with db.begin() as conn:
             conn.execute(delete(Stop).where(Stop.source_id == SOURCE))
             conn.execute(delete(Line).where(Line.source_id == SOURCE))
+
+
+def test_city_network_is_kept_in_memory_until_cleared(db: Engine) -> None:
+    """환승 노선 쌍·운임표는 느린 조회라 메모리에 둔다. 버리기 전에는 DB를 바꿔도 예전 값이다."""
+    from whyuseguide_api import bridge
+
+    with db.begin() as conn:
+        city_id, before = conn.execute(select(City.id, City.fare_table).where(City.code == "tokyo")).one()
+
+    async def fare_bands() -> int:
+        assert DB_URL
+        engine = create_async_engine(DB_URL)
+        async with AsyncSession(engine) as session:
+            city = await bridge.city_network(session, city_id)
+        await engine.dispose()
+        return len(city.fare_bands)
+
+    bridge.clear_network_cache()
+    try:
+        first = anyio.run(fare_bands)
+        with db.begin() as conn:
+            conn.execute(
+                update(City)
+                .where(City.id == city_id)
+                .values(fare_table={"fareBands": [{"maxKm": 99, "fare": 1}] * (first + 1)})
+            )
+        assert anyio.run(fare_bands) == first  # 아직 메모리의 값
+        bridge.clear_network_cache()
+        assert anyio.run(fare_bands) == first + 1
+    finally:
+        with db.begin() as conn:
+            conn.execute(update(City).where(City.id == city_id).values(fare_table=before))
+        bridge.clear_network_cache()

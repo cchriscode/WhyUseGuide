@@ -21,7 +21,8 @@ PLAN_QUERY = """query($fl:Float!,$fo:Float!,$tl:Float!,$to:Float!,$date:String!,
        transportModes:$modes, banned:{agencies:$banned}) {
     routingErrors { code }
     itineraries { startTime endTime duration numberOfTransfers
-      legs { mode distance route { gtfsId agency { name } } } } } }"""
+      legs { mode distance route { gtfsId agency { name } }
+             fareProducts { id product { ... on DefaultFareProduct { price { amount } } } } } } } }"""
 
 AGENCIES_QUERY = "{ agencies { gtfsId name } }"
 
@@ -118,3 +119,23 @@ def routes(it: Itinerary) -> list[Mapping[str, Any]]:
 
 def agency_names(it: Itinerary) -> set[str]:
     return {r["agency"]["name"] for r in routes(it)}
+
+
+def fares(it: Itinerary) -> tuple[int, list[float]]:
+    """(운임표로 계산된 요금 합, 운임표가 없는 승차 구간들의 km).
+
+    OTP는 운영사 GTFS의 운임표(fare_attributes·fare_rules)로 구간마다 요금 상품을 붙인다. 한 번 내는 요금이
+    여러 구간에 걸치면(같은 운영사 환승) 같은 id가 반복되므로 id별로 한 번만 센다. 운임표가 없는 운영사
+    (근사 노선 등)의 구간은 상품이 없다. 그 구간의 거리를 돌려줘 호출자가 근사 운임으로 채우게 한다.
+    """
+    products: dict[str, float] = {}
+    uncovered: list[float] = []
+    for leg in it["legs"]:
+        if not leg["route"]:
+            continue
+        priced = [p for p in leg.get("fareProducts") or [] if (p.get("product") or {}).get("price")]
+        if not priced:
+            uncovered.append(leg["distance"] / 1000)
+        for p in priced:
+            products[p["id"]] = p["product"]["price"]["amount"]
+    return round(sum(products.values())), uncovered

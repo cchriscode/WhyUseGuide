@@ -12,7 +12,7 @@ from whyuseguide_api import errors
 from whyuseguide_api.config import Settings
 from whyuseguide_api.health import build_checks, run_checks
 from whyuseguide_api.routers import auth, catalog, ratings, trips
-from whyuseguide_api.timed import OtpPlanner
+from whyuseguide_api.timed import OtpPlanner, RedisLegCache
 
 
 @asynccontextmanager
@@ -27,8 +27,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     ):
         if not hasattr(app.state, "checks"):
             app.state.checks = build_checks(settings, engine, redis, http)
+        cache = RedisLegCache(redis, settings.otp_cache_ttl_s) if settings.otp_cache_ttl_s > 0 else None
         app.state.planner = (
-            OtpPlanner(otp, settings.otp_url, settings.otp_concurrency) if settings.otp_timed_legs else None
+            OtpPlanner(otp, settings.otp_url, settings.otp_concurrency, cache)
+            if settings.otp_timed_legs
+            else None
         )
         yield
     await redis.aclose()

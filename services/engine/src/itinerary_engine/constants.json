@@ -7,6 +7,7 @@
   "waitHintMin": 20,
   "walkOnlyKm": 1.4,
   "walkCheapKm": 2.6,
+  "walkMaxMin": 60,
   "taxiCompareKm": 6,
   "trimStepMin": 15,
   "trimFloor": { "minMin": 30, "ratio": 0.5 },

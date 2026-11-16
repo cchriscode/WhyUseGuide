@@ -9,12 +9,21 @@ from zoneinfo import ZoneInfo
 import anyio
 import httpx
 import pytest
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from itinerary_engine.compute import compute
 from itinerary_engine.config import to_hhmm, to_min
 from itinerary_engine.models import City, Day, Leg, LegRow, PlanMode, StopRow
 from itinerary_engine.route import Endpoint
-from whyuseguide_api.timed import CityTransit, OtpPlanner, ready_ms, timed_compute, to_leg
+from whyuseguide_api.timed import (
+    CityTransit,
+    OtpPlanner,
+    RedisLegCache,
+    cache_key,
+    ready_ms,
+    timed_compute,
+    to_leg,
+)
 
 DATE = "2026-10-27"
 A = Endpoint("A", 35.7148, 139.7967)  # 센소지
@@ -25,11 +34,21 @@ TOEI, JR = "東京都交通局", "東日本旅客鉄道"
 TOKYO = CityTransit(tz=ZoneInfo("Asia/Tokyo"), estimated_agencies=frozenset({JR}))
 
 
-def itinerary(start: float, end: float, agencies: list[str], transfers: int = 0) -> dict[str, Any]:
-    """ready(10:00) 기준 분으로 만든 OTP 경로."""
+def itinerary(
+    start: float,
+    end: float,
+    agencies: list[str],
+    transfers: int = 0,
+    fares: list[tuple[str, int]] | None = None,
+) -> dict[str, Any]:
+    """ready(10:00) 기준 분으로 만든 OTP 경로. fares = 승차 구간별 (요금 상품 id, 엔). 없으면 운임표 없음."""
     base = ready_ms(DATE, 600, TOKYO.tz)
     legs: list[dict[str, Any]] = [{"mode": "WALK", "distance": 400.0, "route": None}]
-    legs += [{"mode": "SUBWAY", "distance": 2000.0, "route": {"agency": {"name": a}}} for a in agencies]
+    for i, a in enumerate(agencies):
+        leg: dict[str, Any] = {"mode": "SUBWAY", "distance": 2000.0, "route": {"agency": {"name": a}}}
+        if fares and fares[i]:
+            leg["fareProducts"] = [{"id": fares[i][0], "product": {"price": {"amount": float(fares[i][1])}}}]
+        legs.append(leg)
     return {
         "startTime": base + int(start * 60000),
         "endTime": base + int(end * 60000),
@@ -292,3 +311,139 @@ def test_otp_connection_error_is_logged_and_falls_back(caplog: pytest.LogCapture
     with caplog.at_level(logging.WARNING, logger="whyuseguide_api.timed"):
         assert ask(otp_planner(refuse)) is None
     assert "ConnectError" in caplog.text
+
+
+class MemoryCache:
+    def __init__(self) -> None:
+        self.data: dict[str, str] = {}
+
+    async def get(self, key: str) -> str | None:
+        return self.data.get(key)
+
+    async def put(self, key: str, value: str) -> None:
+        self.data[key] = value
+
+
+def test_leg_cache_answers_the_same_question_without_asking_otp() -> None:
+    """같은 구간·같은 준비 시각·같은 이동 방식은 한 번만 OTP에 묻는다. 캐시는 좌표로 찾고 id는 다시 붙인다."""
+    seen: list[dict[str, Any]] = []
+    cache = MemoryCache()
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content)["variables"])
+        return httpx.Response(200, json=plan_body([itinerary(7, 25, [TOEI])]))
+
+    p = OtpPlanner(
+        httpx.AsyncClient(transport=httpx.MockTransport(handle)), "http://otp", concurrency=2, cache=cache
+    )
+    first = ask(p)
+    same_spot_other_id = Endpoint("hotel", B.lat, B.lon)
+    second = ask(p, b=same_spot_other_id)
+    assert first is not None and second is not None and len(seen) == 1
+    assert (second.to_id, second.wait_min, second.minutes) == ("hotel", first.wait_min, first.minutes)
+    assert ask(p, mode="fast") is not None and len(seen) == 2  # 이동 방식이 다르면 다른 질문
+
+    async def later() -> Leg | None:
+        return await p.leg(A, B, DATE, 615, "balance", City(), TOKYO)
+
+    assert anyio.run(later) is not None and len(seen) == 3  # 준비 시각이 다르면 다른 질문
+
+
+def test_leg_cache_does_not_keep_failures() -> None:
+    """OTP가 잠깐 실패한 결과(None)를 넣어 두면 복구된 뒤에도 근사로 남는다. 성공만 넣는다."""
+    cache = MemoryCache()
+    answers = [httpx.Response(500), httpx.Response(200, json=plan_body([itinerary(7, 25, [TOEI])]))]
+    p = OtpPlanner(
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda r: answers.pop(0))),
+        "http://otp",
+        concurrency=2,
+        cache=cache,
+    )
+    assert ask(p) is None and cache.data == {}
+    assert ask(p) is not None and len(cache.data) == 1
+
+
+def test_redis_cache_failure_is_logged_and_ignored(caplog: pytest.LogCaptureFixture) -> None:
+    """Redis가 죽어도 일정 계산은 계속된다(캐시 없이). 경고는 쏟아내지 않고 한 번만."""
+
+    class DownRedis:
+        async def get(self, key: str) -> None:
+            raise RedisConnectionError("refused")
+
+        async def set(self, key: str, value: str, ex: int) -> None:
+            raise RedisConnectionError("refused")
+
+    cache = RedisLegCache(DownRedis(), ttl_s=60)  # type: ignore[arg-type]
+    p = OtpPlanner(
+        httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda r: httpx.Response(200, json=plan_body([itinerary(7, 25, [TOEI])]))
+            )
+        ),
+        "http://otp",
+        concurrency=2,
+        cache=cache,
+    )
+    with caplog.at_level(logging.WARNING, logger="whyuseguide_api.timed"):
+        assert ask(p) is not None and ask(p) is not None
+    assert caplog.text.count("구간 캐시") == 1 and "refused" in caplog.text
+
+
+def test_cache_key_changes_with_city_fares() -> None:
+    """운임표가 바뀌면 예전 결과(요금 포함)를 다시 쓰지 않는다."""
+    priced = City.model_validate({"fareBands": [{"maxKm": 6, "fare": 178}]})
+    assert cache_key(A, B, DATE, 600, "balance", City(), TOKYO) != cache_key(
+        A, B, DATE, 600, "balance", priced, TOKYO
+    )
+
+
+def test_day_is_computed_once_when_it_still_matches_the_first_plan() -> None:
+    """처음 코스와 같으면 비교용 계산을 따로 하지 않는다(OTP 호출이 절반). 달라졌으면 둘 다 계산한다."""
+    from datetime import date as date_
+    from datetime import time as time_
+
+    from whyuseguide_api.db.models import TripDay
+    from whyuseguide_api.itinerary import DayInput, Routing, compute_day
+
+    row = TripDay(
+        day_index=0, date=date_(2026, 10, 27), start_time=time_(9, 0), version=1, cur_index=-1,
+        plan_mode="balance",
+    )  # fmt: skip
+    current = three_stops()
+
+    def run(baseline: Day | None) -> tuple[Any, int]:
+        planner = EveryTenMinutes()
+        out = anyio.run(compute_day, DayInput(row, current, baseline, False), Routing(planner, TOKYO))
+        return out, len(planner.calls)
+
+    same, calls_same = run(current.model_copy())
+    _, calls_alone = run(None)
+    assert calls_same == calls_alone
+    assert same.baseline is not None and same.baseline.end == same.day.totals.end
+
+    reordered = current.model_copy(update={"items": current.items[::-1]})
+    changed, calls_changed = run(reordered)
+    assert calls_changed > calls_same and changed.baseline is not None
+
+
+def test_fare_adds_operator_fares_and_fills_gaps_with_the_city_table() -> None:
+    """운임표가 있는 운영사는 그 요금(두 구간에 걸친 요금은 한 번만), 없는 구간은 거리 구간값."""
+    city = City.model_validate({"fareBands": [{"maxKm": 6, "fare": 178}, {"maxKm": 11, "fare": 209}]})
+    start = ready_ms(DATE, 600, TOKYO.tz)
+
+    def fare(it: dict[str, Any]) -> int:
+        return to_leg(it, A, FAR, "balance", 600, start, city).fare
+
+    # 메트로 2구간이 요금 하나(환승 통산) + 도에이 220엔
+    assert fare(itinerary(0, 30, [TOEI, "メトロ", "メトロ"], 2, [("t", 220), ("m", 178), ("m", 178)])) == 398
+    # JR 구간은 운임표가 없다 → 그 구간 2km의 구간 운임 178엔으로 채운다
+    assert fare(itinerary(0, 30, [TOEI, JR], 1, [("t", 220), None])) == 220 + 178  # type: ignore[list-item]
+    assert fare(itinerary(0, 20, [])) == 0  # 걷기
+
+
+def test_walks_longer_than_the_limit_are_not_offered() -> None:
+    """OTP가 걷는 게 낫다고 해도 60분 넘는 걷기는 안내하지 않는다(근사로 둔다). 60분까지는 쓴다."""
+    assert ask(planner([itinerary(0, 89, [])], "WALKING_BETTER_THAN_TRANSIT"), b=FAR) is None
+    assert ask(planner([itinerary(0, 89, [])]), b=FAR, mode="fast") is None  # 빠르게: 걷기가 유일한 후보
+    ok = ask(planner([itinerary(0, 60, [])], "WALKING_BETTER_THAN_TRANSIT"), b=FAR)
+    assert ok is not None and (ok.mode, ok.minutes) == ("walk", 60)

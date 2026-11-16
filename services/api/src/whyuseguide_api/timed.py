@@ -12,14 +12,19 @@ OTP 질의문·응답 해석은 otp.py.
 """
 
 import asyncio
+import hashlib
 import logging
 import math
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, tzinfo
+from typing import Protocol
 from zoneinfo import ZoneInfo
 
 import httpx
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +40,7 @@ log = logging.getLogger(__name__)
 
 NUM_ITINERARIES = 5  # 구간마다 OTP에서 받는 후보 경로 수. 이 중에서 이동 방식 규칙으로 하나를 고른다.
 MS_PER_MIN = 60_000
+CACHE_VERSION = "v1"  # 구간 결과의 모양이나 고르는 규칙이 바뀌면 올린다(예전 캐시를 안 읽게)
 
 
 @dataclass(frozen=True)
@@ -57,10 +63,14 @@ def to_leg(
     """OTP 경로 → 시간표 구간(estimated는 호출자가 정한다).
 
     출발은 분 내림, 도착은 분 올림(도착 시각을 앞당겨 보이지 않게).
+    요금은 운영사별 운임표로 계산된 값의 합이고, 운임표가 없는 구간(근사 노선 등)만 그 구간 거리의
+    도시 구간 운임으로 채운다.
     """
     wait = max(0, (it["startTime"] - start_ms) // MS_PER_MIN)
     arrive = math.ceil((it["endTime"] - start_ms) / MS_PER_MIN)
     transit = bool(otp.routes(it))
+    priced, uncovered_km = otp.fares(it)
+    fare = priced + sum(transit_fare(km, city) for km in uncovered_km)
     return Leg.model_validate(
         {
             "from": a.id,
@@ -68,7 +78,7 @@ def to_leg(
             "planMode": plan_mode,
             "mode": "transit" if transit else "walk",
             "minutes": arrive - wait,
-            "fare": transit_fare(route_km(a, b), city) if transit else 0,
+            "fare": fare,
             "km": round2(sum(leg["distance"] for leg in it["legs"]) / 1000),
             "transfers": it["numberOfTransfers"] if transit else 0,
             "departAt": to_hhmm(ready),
@@ -99,12 +109,67 @@ def pick_itinerary(itineraries: list[otp.Itinerary], plan_mode: PlanMode) -> otp
     return min(candidates, key=lambda it: it["endTime"])
 
 
+class LegCache(Protocol):
+    """구간 결과 저장소. 읽기·쓰기가 실패해도 예외를 던지지 않는다(캐시 없이 계속 계산한다)."""
+
+    async def get(self, key: str) -> str | None: ...
+
+    async def put(self, key: str, value: str) -> None: ...
+
+
+class RedisLegCache:
+    """Redis에 구간 결과를 ttl_s초 동안 둔다. 시간표는 주 단위로 바뀌므로 몇 시간은 같은 답이다."""
+
+    WARN_EVERY_S = 60  # Redis가 죽어 있을 때 경고를 요청마다 쏟지 않는다
+
+    def __init__(self, redis: Redis, ttl_s: int) -> None:
+        self.redis, self.ttl_s = redis, ttl_s
+        self._warned_at = float("-inf")
+
+    def _warn(self, action: str, error: Exception) -> None:
+        now = time.monotonic()
+        if now - self._warned_at >= self.WARN_EVERY_S:
+            self._warned_at = now
+            log.warning("구간 캐시 %s 실패, 캐시 없이 계산한다: %s: %s", action, type(error).__name__, error)
+
+    async def get(self, key: str) -> str | None:
+        try:
+            value = await self.redis.get(key)
+        except RedisError as e:
+            self._warn("읽기", e)
+            return None
+        return value.decode() if isinstance(value, bytes) else value
+
+    async def put(self, key: str, value: str) -> None:
+        try:
+            await self.redis.set(key, value, ex=self.ttl_s)
+        except RedisError as e:
+            self._warn("쓰기", e)
+
+
+def cache_key(
+    a: Endpoint, b: Endpoint, date: str, ready: int, plan_mode: PlanMode, city: City, transit: CityTransit
+) -> str:
+    """구간 결과를 정하는 것 전부: 양끝 좌표(약 1m), 날짜, 준비 시각, 이동 방식, 도시 운임·근사 운영사."""
+    context = (
+        city.model_dump_json(exclude={"line_links"}) + "|" + ",".join(sorted(transit.estimated_agencies))
+    )
+    digest = hashlib.sha1(context.encode(), usedforsecurity=False).hexdigest()[:12]
+    return (
+        f"leg:{CACHE_VERSION}:{digest}:{a.lat:.5f},{a.lon:.5f}:{b.lat:.5f},{b.lon:.5f}"
+        f":{date}:{ready}:{plan_mode}"
+    )
+
+
 class OtpPlanner:
     """OTP로 시간표 구간을 구한다. 실패하거나 쓸 경로가 없으면 None(엔진이 근사)."""
 
-    def __init__(self, client: httpx.AsyncClient, url: str, concurrency: int) -> None:
+    def __init__(
+        self, client: httpx.AsyncClient, url: str, concurrency: int, cache: LegCache | None = None
+    ) -> None:
         self.client, self.url = client, url
         self.limit = asyncio.Semaphore(concurrency)
+        self.cache = cache
 
     async def plan(
         self, a: Endpoint, b: Endpoint, date: str, ready: int, modes: list[dict[str, str]]
@@ -139,7 +204,49 @@ class OtpPlanner:
         city: City,
         transit: CityTransit,
     ) -> Leg | None:
-        """ready(분)에 출발 준비가 됐을 때의 구간. 이동 방식별 도보 기준은 근사 규칙(§5.3)과 같다.
+        """ready(분)에 출발 준비가 됐을 때의 구간. 같은 질문의 답은 캐시에서 꺼낸다(성공한 결과만 넣는다)."""
+        if self.cache is None:
+            return await self.usable_leg(a, b, date, ready, plan_mode, city, transit)
+        key = cache_key(a, b, date, ready, plan_mode, city, transit)
+        cached = await self.cache.get(key)
+        if cached is not None:
+            # 캐시는 좌표로 찾으므로 장소 id는 지금 것으로 다시 붙인다
+            return Leg.model_validate_json(cached).model_copy(update={"from_id": a.id, "to_id": b.id})
+        leg = await self.usable_leg(a, b, date, ready, plan_mode, city, transit)
+        if leg is not None:
+            await self.cache.put(key, leg.model_dump_json(by_alias=True))
+        return leg
+
+    async def usable_leg(
+        self,
+        a: Endpoint,
+        b: Endpoint,
+        date: str,
+        ready: int,
+        plan_mode: PlanMode,
+        city: City,
+        transit: CityTransit,
+    ) -> Leg | None:
+        """OTP 구간 중 안내할 수 있는 것만. 걷기만 WALK_MAX_MIN 넘게 하는 경로는 버린다(엔진이 근사).
+
+        역·정류장이 닿지 않는 곳에서는 OTP가 "걷는 게 낫다"며 90분, 3시간짜리 걷기를 낸다.
+        """
+        leg = await self.query_leg(a, b, date, ready, plan_mode, city, transit)
+        if leg is not None and leg.mode == "walk" and leg.minutes > constants()["walkMaxMin"]:
+            return None
+        return leg
+
+    async def query_leg(
+        self,
+        a: Endpoint,
+        b: Endpoint,
+        date: str,
+        ready: int,
+        plan_mode: PlanMode,
+        city: City,
+        transit: CityTransit,
+    ) -> Leg | None:
+        """OTP에 물어 구한 구간. 이동 방식별 도보 기준은 근사 규칙(§5.3)과 같다.
 
         균형·알뜰: 경로 km가 도보 기준 이하면 OTP 도보 경로.
         모든 방식: 대중교통 경로가 하나도 없으면 OTP가 걷는 게 낫다고 할 때만 걷고, 아니면 None → 엔진 근사

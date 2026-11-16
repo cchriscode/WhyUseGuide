@@ -4,9 +4,11 @@
 """
 
 import logging
+import time
 import uuid
 from collections import defaultdict
-from datetime import date, time
+from datetime import date
+from datetime import time as clock_time
 from typing import Any
 
 from sqlalchemy import select, text
@@ -19,15 +21,23 @@ from whyuseguide_api import network
 from whyuseguide_api.db.models import City, Place, PlaceClosure, PlaceHours, PlaceStatus, PlaceTag
 
 
-def hhmm(t: time | None) -> str | None:
+def hhmm(t: clock_time | None) -> str | None:
     return t.strftime("%H:%M") if t else None
 
 
 log = logging.getLogger(__name__)
 _warned_no_fare: set[uuid.UUID] = set()
+# 환승 가능 노선 쌍 조회는 역끼리의 거리 계산이라 느리고(도쿄 0.3초), 교통 데이터나 운임표를 적재할 때만
+# 바뀐다. 프로세스 메모리에 이 시간 동안 둔다. 적재한 내용은 늦어도 이 시간 뒤에 반영된다.
+NETWORK_TTL_S = 600
+_networks: dict[uuid.UUID, tuple[float, EngineCity]] = {}
 
 
 async def city_network(session: AsyncSession, city_id: uuid.UUID) -> EngineCity:
+    """도시의 환승 가능 노선 쌍과 운임표. NETWORK_TTL_S 동안은 메모리에 둔 값을 쓴다."""
+    cached = _networks.get(city_id)
+    if cached is not None and cached[0] > time.monotonic():
+        return cached[1]
     rows = await session.execute(network.LINE_LINKS_SQL, network.line_links_params(city_id))
     fare: dict[str, Any] = (
         await session.execute(select(City.fare_table).where(City.id == city_id))
@@ -43,7 +53,13 @@ async def city_network(session: AsyncSession, city_id: uuid.UUID) -> EngineCity:
             "있음" if city.taxi else "없음",
             city_id,
         )
+    _networks[city_id] = (time.monotonic() + NETWORK_TTL_S, city)
     return city
+
+
+def clear_network_cache() -> None:
+    """메모리에 둔 노선망을 버린다(데이터를 바꾼 직후 바로 반영해야 할 때, 테스트)."""
+    _networks.clear()
 
 
 async def place_stations(
